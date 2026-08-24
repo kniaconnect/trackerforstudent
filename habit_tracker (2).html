@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit Tracker Anak Sekolah</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root{
+    --bg:#F3F4FB;              /* app background */
+    --card:#FFFFFF;            /* card surface */
+    --card-soft:#F7F8FD;       /* recessed / secondary surface */
+    --line:#EEF0F8;
+    --shadow: 0 14px 30px rgba(41,45,80,0.07), 0 2px 8px rgba(41,45,80,0.05);
+    --shadow-sm: 0 6px 14px rgba(41,45,80,0.06);
+
+    --purple:#7B6EF6;
+    --purple-deep:#6256E8;
+    --blue:#4C8DF6;
+    --blue-soft:#E8F0FE;
+    --yellow:#F6A93B;
+    --yellow-soft:#FFF3DF;
+    --pink:#FF6E93;
+    --pink-soft:#FFE7EE;
+    --green2:#38C6A8;
+    --green-soft:#E4F8F2;
+
+    --ink:#262A41;
+    --ink-soft:#8A8FA8;
+    --danger:#EF5A6F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 90% -6%, #E4E8FF 0%, transparent 40%),
+      radial-gradient(circle at -10% 105%, #FFE9D6 0%, transparent 38%),
+      var(--bg);
+    font-family:'Nunito', sans-serif;
+    color:var(--ink);
+    padding:22px 14px 60px;
+  }
+  .icon{width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-0.15em;}
+  .wrap{max-width:760px; margin:0 auto;}
+  button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
+
+  /* ---------- CARD MIXINS (soft, flat, no inset neumorphism) ---------- */
+  .clay-raised{
+    background:var(--card); border:none; border-radius:26px;
+    box-shadow: var(--shadow);
+  }
+  .clay-pressed{
+    background:var(--card-soft); border:none; border-radius:20px;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .clay-btn{
+    background:var(--card); border:none; border-radius:16px; color:var(--purple-deep);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow .15s ease, transform .12s ease, background .15s ease;
+  }
+  .clay-btn:active{ transform:translateY(1px) scale(.98); }
+  .clay-btn-teal{
+    background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); color:#fff;
+    box-shadow: 0 10px 22px rgba(98,86,232,0.35);
+  }
+  .clay-btn-teal:active{ transform:translateY(1px) scale(.98); }
+
+  /* ---------- AUTH SCREEN ---------- */
+  #authScreen{
+    max-width:400px; margin:8vh auto 0; padding:34px 28px; text-align:center;
+    border-radius:32px;
+  }
+  #authScreen .auth-icon-wrap{
+    width:64px; height:64px; border-radius:20px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%);
+  }
+  #authScreen .auth-icon{width:30px; height:30px; color:#fff;}
+  #authScreen h1{font-family:'Baloo 2'; font-size:21px; color:var(--ink); margin:6px 0 4px;}
+  #authScreen p{font-size:13.5px; color:var(--ink-soft); margin:0 0 18px; line-height:1.5;}
+  #authScreen label{display:block; text-align:left; font-size:12.5px; font-weight:700; color:var(--ink); margin:14px 0 6px;}
+  #authScreen input{
+    width:100%; padding:13px 15px; border-radius:16px; border:1.5px solid var(--line); background:var(--card-soft);
+    font-size:15px; font-family:inherit; outline:none;
+  }
+  #authScreen input:focus{ border-color:var(--purple); }
+  #authScreen .primary-btn{
+    width:100%; margin-top:20px; padding:13px; border-radius:18px; font-family:'Baloo 2'; font-weight:700; font-size:15px;
+  }
+  #authScreen .fine-print{font-size:11px; color:var(--ink-soft); margin-top:16px; line-height:1.5;}
+  #authError{color:var(--danger); font-size:12.5px; font-weight:700; min-height:16px; margin-top:8px;}
+
+  /* ---------- APP SCREEN ---------- */
+  #appScreen{display:none;}
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-bottom:20px; flex-wrap:wrap;
+  }
+  .title-block h1{font-family:'Baloo 2'; font-size:clamp(19px,4.5vw,26px); color:var(--ink); margin:0 0 2px;}
+  .title-block p{margin:0; color:var(--ink-soft); font-size:12.5px; font-weight:700;}
+  .session-pill{
+    display:flex; align-items:center; gap:10px; padding:8px 8px 8px 16px; border-radius:999px;
+    font-size:12.5px; font-weight:700; color:var(--ink);
+  }
+  .session-pill button{ width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-soft);}
+
+  /* summary cards */
+  .summary{display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;}
+  .summary-card{ flex:1; min-width:130px; padding:16px; display:flex; align-items:center; gap:12px;}
+  .summary-card .badge{
+    width:44px; height:44px; border-radius:15px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .summary-card .badge svg{width:21px; height:21px;}
+  .summary-card.sc-yellow .badge{ background:var(--yellow-soft); color:var(--yellow); }
+  .summary-card.sc-blue .badge{ background:var(--blue-soft); color:var(--blue); }
+  .summary-card.sc-pink .badge{ background:var(--pink-soft); color:var(--pink); }
+  .summary-text b{display:block; font-family:'Baloo 2'; font-size:17px; color:var(--ink); line-height:1.2;}
+  .summary-text small{color:var(--ink-soft); font-size:11.5px; font-weight:700;}
+
+  /* weekly hero (gradient progress card, mirrors reference "Weekly Performance") */
+  .hero-card{
+    border-radius:26px; padding:20px 22px; margin-bottom:18px;
+    background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%);
+    color:#fff; display:flex; align-items:center; justify-content:space-between; gap:14px;
+    box-shadow: 0 16px 30px rgba(98,86,232,0.32);
+  }
+  .hero-card .hero-text b{display:block; font-family:'Baloo 2'; font-size:16px; margin-bottom:3px;}
+  .hero-card .hero-text small{opacity:.85; font-size:11.5px; font-weight:700;}
+  .hero-ring{
+    width:64px; height:64px; border-radius:50%; flex-shrink:0; position:relative;
+    background:conic-gradient(#fff calc(var(--pct,0)*1%), rgba(255,255,255,.28) 0);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hero-ring::after{content:''; position:absolute; inset:6px; background:var(--purple-deep); opacity:.001; border-radius:50%;}
+  .hero-ring::before{content:''; position:absolute; inset:6px; background:linear-gradient(135deg,#6f63e0,#4c7fea); border-radius:50%;}
+  .hero-ring span{position:relative; z-index:1; font-family:'Baloo 2'; font-weight:800; font-size:14px;}
+
+  /* legacy ring (kept for compatibility, unused visually but safe) */
+  .ring{
+    width:46px; height:46px; border-radius:50%; flex-shrink:0; position:relative;
+    background:conic-gradient(var(--purple) calc(var(--pct,0)*1%), var(--card-soft) 0);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .ring::after{content:''; position:absolute; inset:5px; background:var(--card); border-radius:50%;}
+  .ring span{position:relative; z-index:1; font-family:'Baloo 2'; font-weight:700; font-size:11px; color:var(--ink);}
+
+  /* calendar */
+  .cal-card{padding:18px; margin-bottom:18px;}
+  .cal-nav{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .cal-nav button{ width:34px; height:34px; display:flex; align-items:center; justify-content:center;}
+  .cal-nav .month-label{font-family:'Baloo 2'; font-weight:700; color:var(--ink); font-size:15px;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .cal-dow{text-align:center; font-size:10.5px; font-weight:800; color:var(--ink-soft); padding-bottom:4px;}
+  .cal-cell{
+    aspect-ratio:1; border-radius:14px; background:var(--card-soft); border:none;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:12px; font-weight:700; color:var(--ink); position:relative; min-height:40px;
+  }
+  .cal-cell.empty{background:transparent; box-shadow:none;}
+  .cal-cell.today{ box-shadow: 0 0 0 2px var(--yellow);}
+  .cal-cell.selected{
+    background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); color:#fff;
+    box-shadow: 0 8px 16px rgba(98,86,232,0.35);
+  }
+  .cal-cell .dot-ring{
+    width:20px; height:20px; border-radius:50%;
+    background:conic-gradient(var(--green2) calc(var(--p,0)*1%), rgba(138,143,168,.18) 0);
+  }
+  .cal-cell.selected .dot-ring{background:conic-gradient(#fff calc(var(--p,0)*1%), rgba(255,255,255,.3) 0);}
+
+  /* day panel */
+  .day-panel{padding:18px 18px 10px;}
+  .day-panel h2{font-family:'Baloo 2'; font-size:15px; color:var(--ink); margin:0 0 14px;}
+  .habit-row{ display:flex; align-items:center; gap:10px; padding:12px; border-radius:18px; margin-bottom:10px; background:var(--card-soft);}
+  .habit-icon{
+    width:40px; height:40px; border-radius:14px; color:var(--purple-deep); background:var(--blue-soft);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:18px;
+  }
+  .habit-body{flex:1; min-width:0;}
+  .habit-name{font-weight:700; font-size:14px; display:block;}
+  .habit-sub{font-size:11px; color:var(--ink-soft); font-weight:700;}
+  .toggle-btn{
+    width:36px; height:36px; border-radius:13px; color:transparent; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .toggle-btn svg{width:16px; height:16px;}
+  .toggle-btn.on{ background:linear-gradient(135deg,var(--green2),#2FB89B); color:#fff; }
+  .toggle-btn.off{ background:var(--card); box-shadow: var(--shadow-sm); }
+
+  .stepper{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+  .step-btn{ width:28px; height:28px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; color:var(--purple-deep);}
+  .step-val{min-width:56px; text-align:center; font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink);}
+
+  .del-btn{
+    width:28px; height:28px; border-radius:10px; background:transparent; color:var(--ink-soft); box-shadow:none;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .del-btn:hover{color:var(--danger);}
+  .del-btn svg{width:15px; height:15px;}
+  .edit-btn{
+    width:28px; height:28px; border-radius:10px; background:transparent; color:var(--ink-soft); box-shadow:none;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .edit-btn:hover{color:var(--purple-deep);}
+  .edit-btn svg{width:15px; height:15px;}
+
+  /* ---------- LOGO ---------- */
+  .brand-logo{ display:block; margin:0 auto 14px; width:56px; height:56px; border-radius:18px; object-fit:cover; box-shadow: var(--shadow-sm); background:#fff; }
+  .header-logo{ width:38px; height:38px; border-radius:12px; object-fit:cover; flex-shrink:0; box-shadow: var(--shadow-sm); background:#fff; }
+  .title-block{ display:flex; align-items:center; gap:10px; }
+
+  /* ---------- TABS ---------- */
+  .tab-bar{ display:flex; gap:8px; margin-bottom:16px; padding:6px; border-radius:20px; background:var(--card); box-shadow: var(--shadow-sm); }
+  .tab-btn{ flex:1; padding:11px 8px; border-radius:15px; background:transparent; box-shadow:none; color:var(--ink-soft);
+    font-family:'Baloo 2'; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .tab-btn svg{width:15px; height:15px;}
+  .tab-btn.active{ color:#fff; background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); box-shadow: 0 8px 16px rgba(98,86,232,0.3); }
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* ---------- GOALS (Target Bulan Ini & Life Goal) ---------- */
+  .goals-row{display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;}
+  .goal-card{flex:1; min-width:230px; padding:16px 18px;}
+  .goal-card .goal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .goal-card .goal-title{display:flex; align-items:center; gap:8px; font-family:'Baloo 2'; font-weight:700; font-size:13px; color:var(--ink);}
+  .goal-card .goal-title .badge{width:30px; height:30px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .goal-card .goal-title .badge svg{width:15px; height:15px;}
+  .goal-card.gc-yellow .badge{background:var(--yellow-soft); color:var(--yellow);}
+  .goal-card.gc-pink .badge{background:var(--pink-soft); color:var(--pink);}
+  .goal-card .goal-edit{width:26px; height:26px; border-radius:9px; background:transparent; box-shadow:none; color:var(--ink-soft); display:flex; align-items:center; justify-content:center;}
+  .goal-card .goal-edit:hover{color:var(--purple-deep);}
+  .goal-card .goal-edit svg{width:14px; height:14px;}
+  .goal-card .goal-text{font-size:13px; color:var(--ink-soft); line-height:1.5; font-weight:600; min-height:20px;}
+  .goal-card .goal-text.empty{font-style:italic; opacity:.75;}
+  .goal-card textarea{
+    width:100%; padding:10px 12px; border-radius:14px; border:1.5px solid var(--line); background:var(--card-soft);
+    font-size:13px; font-family:inherit; outline:none; resize:vertical; min-height:60px;
+  }
+  .goal-card textarea:focus{border-color:var(--purple);}
+  .goal-card .goal-actions{display:none; gap:8px; margin-top:8px;}
+  .goal-card .goal-actions.show{display:flex;}
+  .goal-card .goal-actions button{flex:1; padding:8px; border-radius:12px; font-family:'Baloo 2'; font-weight:700; font-size:12px;}
+  .goal-card .goal-view.editing{display:none;}
+
+  /* ---------- MOOD PICKER ---------- */
+  .mood-card{padding:18px; margin-bottom:16px;}
+  .mood-card h2{font-family:'Baloo 2'; font-size:15px; color:var(--ink); margin:0 0 4px;}
+  .mood-card p.sub{margin:0 0 14px; font-size:12px; color:var(--ink-soft); font-weight:700;}
+  .mood-grid{display:flex; gap:8px; justify-content:space-between;}
+  .mood-opt{
+    flex:1; padding:12px 4px; border-radius:16px; background:var(--card-soft); box-shadow:none; color:var(--ink-soft);
+    display:flex; flex-direction:column; align-items:center; gap:6px; font-size:10.5px; font-weight:700;
+  }
+  .mood-opt svg{width:24px; height:24px;}
+  .mood-opt.selected{ color:#fff; background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); box-shadow: 0 8px 16px rgba(98,86,232,0.3); }
+
+  /* ---------- JOURNAL ---------- */
+  .journal-card{padding:18px;}
+  .journal-card h2{font-family:'Baloo 2'; font-size:15px; color:var(--ink); margin:0 0 4px;}
+  .journal-card p.sub{margin:0 0 12px; font-size:12px; color:var(--ink-soft); font-weight:700;}
+  .journal-card textarea{
+    width:100%; min-height:140px; padding:14px 16px; border-radius:18px; border:1.5px solid var(--line); background:var(--card-soft);
+    font-size:14px; font-family:inherit; outline:none; resize:vertical; line-height:1.6;
+  }
+  .journal-card textarea:focus{border-color:var(--purple);}
+  .journal-save-row{display:flex; align-items:center; justify-content:space-between; margin-top:10px; gap:10px;}
+  .journal-save-row button{padding:10px 18px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:#fff;}
+  .journal-status{font-size:11.5px; color:var(--ink-soft); font-weight:700;}
+
+  .add-habit-btn{
+    width:100%; margin:8px 0 16px; padding:14px; font-family:'Baloo 2'; font-weight:700; font-size:13.5px;
+    display:flex; align-items:center; justify-content:center; gap:6px; color:#fff;
+    background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%);
+    box-shadow: 0 10px 22px rgba(98,86,232,0.3);
+  }
+  .add-habit-form{ border-radius:22px; padding:16px; margin:8px 0 16px; display:none; background:var(--card-soft);
+    box-shadow: inset 0 0 0 1px var(--line);}
+  .add-habit-form.show{display:block;}
+  .add-habit-form input{
+    width:100%; padding:11px 13px; border-radius:14px; border:1.5px solid var(--line); background:var(--card);
+    font-size:14px; font-family:inherit; margin-bottom:10px; outline:none;
+  }
+  .add-habit-form input:focus{border-color:var(--purple);}
+  .type-toggle{display:flex; gap:8px; margin-bottom:10px;}
+  .type-toggle button{ flex:1; padding:9px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink-soft); background:var(--card);
+    box-shadow: var(--shadow-sm);}
+  .type-toggle button.active{ color:#fff; background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); box-shadow:none;}
+  .count-fields{display:none; gap:8px;}
+  .count-fields.show{display:flex;}
+  .count-fields input{flex:1;}
+
+  .icon-pick-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(40px,1fr)); gap:7px; margin-bottom:12px;}
+  .icon-pick{
+    aspect-ratio:1; border-radius:13px; background:var(--card); color:var(--ink-soft);
+    box-shadow: var(--shadow-sm);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .icon-pick svg{width:18px; height:18px;}
+  .icon-pick.chosen{ color:#fff; background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); box-shadow:none;}
+  .form-actions{display:flex; gap:8px;}
+  .form-actions button{ flex:1; padding:11px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:13px;}
+  .btn-save{color:#fff;}
+  .btn-cancel{color:var(--ink-soft);}
+
+  .state-msg{text-align:center; padding:20px; color:var(--ink-soft); font-size:13px;}
+  footer.note{margin-top:18px; font-size:11.5px; color:var(--ink-soft); text-align:center; line-height:1.6;}
+
+  @media(max-width:420px){
+    .summary{gap:8px;}
+    .summary-card{min-width:96px; padding:12px;}
+    .cal-cell{font-size:10.5px;}
+  }
+
+  /* ---------- GOOGLE LOGIN / ACCESS UI ---------- */
+  .google-btn{
+    width:100%; margin-top:20px; padding:13px; border-radius:18px; font-family:'Baloo 2'; font-weight:700; font-size:14.5px;
+    display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#3c4043;
+    box-shadow: var(--shadow-sm);
+  }
+  .google-btn svg{width:20px; height:20px; flex-shrink:0;}
+  .google-btn:disabled{opacity:.6;}
+  .user-chip{display:flex; align-items:center; gap:8px; min-width:0;}
+  .user-chip img{width:26px; height:26px; border-radius:50%; flex-shrink:0;}
+  .user-chip span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px;}
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(38,42,65,.45); display:none;
+    align-items:center; justify-content:center; padding:16px; z-index:60;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{max-width:380px; width:100%; padding:22px; max-height:82vh; overflow:auto;}
+  .modal-card h2{font-family:'Baloo 2'; color:var(--ink); margin:0 0 8px; font-size:16px;}
+  .modal-card p.hint{font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; line-height:1.5;}
+  .access-row{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:14px;
+    background:var(--card-soft); margin-bottom:8px; font-size:12.5px; font-weight:700; color:var(--ink);
+  }
+  .access-row .access-email{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .access-row .access-tag{font-size:10px; font-weight:800; color:var(--purple-deep); flex-shrink:0;}
+  .access-row button{
+    width:26px; height:26px; border-radius:9px; color:var(--danger); background:transparent; box-shadow:none;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .access-row button svg{width:14px; height:14px;}
+  .access-add-row{display:flex; gap:8px; margin-top:6px;}
+  .access-add-row input{
+    flex:1; padding:11px 13px; border-radius:14px; border:1.5px solid var(--line); background:var(--card-soft);
+    font-size:13.5px; font-family:inherit; outline:none;
+  }
+  .access-add-row input:focus{border-color:var(--purple);}
+  .access-add-row button{padding:0 16px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; color:#fff; flex-shrink:0;}
+  #accessError{color:var(--danger); font-size:12px; margin-top:8px; min-height:14px; font-weight:700;}
+  .modal-close-btn{width:100%; margin-top:14px; padding:11px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; color:var(--ink-soft);}
+  #deniedScreen{max-width:400px; margin:8vh auto 0; padding:32px 26px; text-align:center; border-radius:32px; display:none;}
+  #deniedScreen p{font-size:13px; color:var(--ink-soft); line-height:1.5;}
+
+  @media(max-width:480px){
+    .wrap{padding:0 2px;}
+    header{flex-direction:column; align-items:flex-start; gap:12px;}
+    .session-pill{width:100%; justify-content:space-between; padding:8px;}
+    .user-chip span{max-width:34vw;}
+  }
+  @media(max-width:360px){
+    .summary-card{min-width:100%;}
+    .cal-grid{gap:4px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="clay-raised">
+  <img class="brand-logo" src="https://cdn.lynkid.my.id/draft-products/24-08-2026/1787576494698_9294242.png?format=webp" alt="Logo">
+  <h1>Habit Tracker Keluarga</h1>
+  <p>Masuk pakai akun Google supaya progres anak bisa langsung dipantau dari HP orang tua juga.</p>
+  <button class="google-btn clay-btn" id="googleSignInBtn" type="button">
+    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5Z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.5 0-13.9 4.2-17.7 10.7Z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6C29.6 35 26.9 36 24 36c-5.3 0-9.7-3.1-11.3-7.9l-6.6 5c3.8 6.5 10.2 10.9 17.9 10.9Z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.4-2.3 4.4-4.3 5.9l6.6 5.6C40.5 36.6 44 30.9 44 24c0-1.3-.1-2.7-.4-3.5Z"/></svg>
+    Masuk dengan Google
+  </button>
+  <div id="authError"></div>
+  <div class="fine-print">Hanya akun Google yang sudah diizinkan pemilik tracker yang bisa membuka & mengisi data ini. Akun orang tua (anisahknia@gmail.com) sudah otomatis punya akses.</div>
+</div>
+
+<div id="deniedScreen" class="clay-raised">
+  <div class="auth-icon-wrap clay-pressed">
+    <svg class="icon auth-icon" viewBox="0 0 24 24" style="color:var(--danger);"><circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+  </div>
+  <h1>Akun Belum Diizinkan</h1>
+  <p id="deniedEmailText"></p>
+  <p>Minta pemilik tracker menambahkan email ini lewat menu "Kelola Akses" setelah mereka login.</p>
+  <button class="primary-btn clay-btn clay-btn-teal" id="deniedLogoutBtn" type="button" style="width:100%;margin-top:16px;">Ganti Akun / Keluar</button>
+</div>
+
+<div class="modal-overlay" id="accessModal">
+  <div class="modal-card clay-raised">
+    <h2>Kelola Akses</h2>
+    <p class="hint">Akun Google di bawah ini bisa membuka & mengisi tracker ini. Tambahkan email anak atau orang tua lain di sini.</p>
+    <div id="accessList"></div>
+    <div class="access-add-row">
+      <input id="newAccessEmail" type="email" placeholder="Tambah email Google" maxlength="80">
+      <button class="clay-btn clay-btn-teal" id="addAccessBtn" type="button">Tambah</button>
+    </div>
+    <div id="accessError"></div>
+    <button class="clay-btn modal-close-btn" id="closeAccessModal" type="button">Tutup</button>
+  </div>
+</div>
+
+<div id="appScreen">
+  <div class="wrap">
+    <header>
+      <div class="title-block">
+        <img class="header-logo" src="https://cdn.lynkid.my.id/draft-products/24-08-2026/1787576494698_9294242.png?format=webp" alt="Logo">
+        <div>
+          <h1 style="margin:0 0 2px;">Habit Tracker Anak Sholeh & Rajin</h1>
+          <p id="childLabel" style="margin:0;">—</p>
+        </div>
+      </div>
+      <div class="session-pill clay-raised">
+        <div class="user-chip">
+          <img id="userAvatar" src="" alt="" style="display:none;">
+          <span id="userEmailLabel">—</span>
+        </div>
+        <button class="clay-btn" id="manageAccessBtn" title="Kelola Akses">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </button>
+        <button class="clay-btn" id="logoutBtn" title="Keluar">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="goals-row">
+      <div class="goal-card clay-raised gc-yellow">
+        <div class="goal-head">
+          <div class="goal-title"><span class="badge" id="monthlyTargetBadge"></span><span id="monthlyTargetLabel">Target Bulan Ini</span></div>
+          <button class="goal-edit" id="editMonthlyTargetBtn" type="button"></button>
+        </div>
+        <div class="goal-view" id="monthlyTargetView"><div class="goal-text empty" id="monthlyTargetText">Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.</div></div>
+        <textarea id="monthlyTargetInput" style="display:none;" maxlength="200" placeholder="Tulis target bulan ini, mis. Sholat tahajud 20 hari."></textarea>
+        <div class="goal-actions" id="monthlyTargetActions">
+          <button class="btn-cancel clay-btn" id="cancelMonthlyTarget" type="button">Batal</button>
+          <button class="btn-save clay-btn clay-btn-teal" id="saveMonthlyTarget" type="button">Simpan</button>
+        </div>
+      </div>
+      <div class="goal-card clay-raised gc-pink">
+        <div class="goal-head">
+          <div class="goal-title"><span class="badge" id="lifeGoalBadge"></span><span>Life Goal</span></div>
+          <button class="goal-edit" id="editLifeGoalBtn" type="button"></button>
+        </div>
+        <div class="goal-view" id="lifeGoalView"><div class="goal-text empty" id="lifeGoalText">Belum diisi. Tulis cita-cita atau tujuan hidup jangka panjang.</div></div>
+        <textarea id="lifeGoalInput" style="display:none;" maxlength="300" placeholder="Tulis life goal, mis. Jadi hafidz Qur'an & juara olimpiade sains."></textarea>
+        <div class="goal-actions" id="lifeGoalActions">
+          <button class="btn-cancel clay-btn" id="cancelLifeGoal" type="button">Batal</button>
+          <button class="btn-save clay-btn clay-btn-teal" id="saveLifeGoal" type="button">Simpan</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabBtnHabits" type="button"></button>
+      <button class="tab-btn" id="tabBtnJournal" type="button"></button>
+    </div>
+
+    <div class="tab-panel active" id="tabHabits">
+      <div class="summary" id="summaryRow"></div>
+      <div class="hero-card" id="heroCard"></div>
+
+      <div class="cal-card clay-raised">
+        <div class="cal-nav">
+          <button class="clay-btn" id="prevMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+          <div class="month-label" id="monthLabel">—</div>
+          <button class="clay-btn" id="nextMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+        <div class="cal-grid" id="calDow"></div>
+        <div class="cal-grid" id="calGrid" style="margin-top:5px;"></div>
+      </div>
+
+      <div class="day-panel clay-raised">
+        <h2 id="dayLabel">—</h2>
+        <div id="habitList"></div>
+        <button class="add-habit-btn clay-btn" id="showAddForm">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Tambah Kebiasaan
+        </button>
+        <div class="add-habit-form" id="addForm">
+          <input id="newHabitName" type="text" placeholder="Nama kebiasaan, mis. Baca Qur'an" maxlength="30">
+          <div class="type-toggle">
+            <button type="button" class="active" id="typeCheckBtn">Centang biasa</button>
+            <button type="button" id="typeCountBtn">Dengan target angka</button>
+          </div>
+          <div class="count-fields" id="countFields">
+            <input id="newHabitTarget" type="number" min="0.5" step="0.5" placeholder="Target (mis. 2)">
+            <input id="newHabitUnit" type="text" placeholder="Satuan (mis. liter, jam)" maxlength="12">
+          </div>
+          <div class="icon-pick-grid" id="iconPickGrid"></div>
+          <div class="form-actions">
+            <button class="btn-cancel clay-btn" id="cancelAdd" type="button">Batal</button>
+            <button class="btn-save clay-btn clay-btn-teal" id="saveAdd" type="button">Simpan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tabJournal">
+      <div class="mood-card clay-raised">
+        <h2 id="moodDateLabel">Mood Hari Ini</h2>
+        <p class="sub">Ketuk salah satu untuk mencatat mood pada tanggal yang dipilih.</p>
+        <div class="mood-grid" id="moodGrid"></div>
+      </div>
+      <div class="journal-card clay-raised">
+        <h2 id="journalDateLabel">Jurnal Harian</h2>
+        <p class="sub">Tulis apa saja yang terjadi atau dirasakan hari ini.</p>
+        <textarea id="journalText" maxlength="2000" placeholder="Hari ini aku..."></textarea>
+        <div class="journal-save-row">
+          <span class="journal-status" id="journalStatus"></span>
+          <button class="clay-btn clay-btn-teal" id="saveJournalBtn" type="button">Simpan Jurnal</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note">Data tersimpan otomatis di akun keluarga & bisa dipantau dari HP mana pun yang login. Ketuk lingkaran tanggal untuk pindah hari.</footer>
+  </div>
+</div>
+
+<script type="module">
+/* ---------------- FIREBASE SETUP ---------------- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove,
+  collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDvJYqwcQgZLpBW4crO5f7kO8Zttl2Hjxs",
+  authDomain: "trackerforstudent.firebaseapp.com",
+  projectId: "trackerforstudent",
+  storageBucket: "trackerforstudent.firebasestorage.app",
+  messagingSenderId: "762809787198",
+  appId: "1:762809787198:web:135c61af397a5e7995026f",
+  measurementId: "G-FYFKJKHHLC"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+const googleProvider = new GoogleAuthProvider();
+
+/* ---------------- ICON LIBRARY (inline SVG paths, no emoji) ---------------- */
+const ICONS = {
+  moon:      '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sun:       '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  bookOpen:  '<path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2Z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7Z"/>',
+  pencil:    '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  brain:     '<path d="M9.5 2a2.5 2.5 0 0 0-2.45 2.02A3 3 0 0 0 5 6.87v.26a3 3 0 0 0-1.34 4.94A3 3 0 0 0 5 17.5a2.5 2.5 0 0 0 4.5 1.44"/><path d="M14.5 2a2.5 2.5 0 0 1 2.45 2.02A3 3 0 0 1 19 6.87v.26a3 3 0 0 1 1.34 4.94A3 3 0 0 1 19 17.5a2.5 2.5 0 0 1-4.5 1.44"/><path d="M9.5 4.5v15M14.5 4.5v15"/>',
+  dumbbell:  '<path d="m6.5 6.5 11 11"/><path d="m21 21-1.5-1.5M3 3l1.5 1.5"/><path d="M18.5 15.5 21 13a1.5 1.5 0 0 0-2-2l-2.5 2.5M5.5 8.5 3 11a1.5 1.5 0 0 0 2 2l2.5-2.5"/><path d="m15.5 5.5 3 3M5.5 15.5l3 3"/>',
+  star:      '<path d="M12 2 15 9l7 1-5 5 1.5 7-6.5-3.5L5.5 22 7 15 2 10l7-1Z"/>',
+  heart:     '<path d="M12 20s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 5a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9Z"/>',
+  droplet:   '<path d="M12 2s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z"/>',
+  target:    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  music:     '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  check:     '<path d="M20 6 9 17l-5-5"/>',
+  trash:     '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  phoneOff:  '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="2" y1="2" x2="22" y2="22"/>',
+  minus:     '<path d="M5 12h14"/>',
+  plus:      '<path d="M12 5v14M5 12h14"/>',
+  book:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+  users:     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  x:         '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+function iconSvg(key, cls){ return `<svg class="icon ${cls||''}" viewBox="0 0 24 24">${ICONS[key]||ICONS.star}</svg>`; }
+
+const ICON_PICK_OPTIONS = ['star','moon','sun','book','bookOpen','pencil','brain','dumbbell','heart','droplet','phoneOff','target','music'];
+
+/* ---------------- MOOD LIBRARY ---------------- */
+const MOODS = [
+  {key:'great', label:'Semangat', icon:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/>'},
+  {key:'good',  label:'Senang',   icon:'<circle cx="12" cy="12" r="9"/><path d="M8 13.5s1.2 1.5 4 1.5 4-1.5 4-1.5"/><path d="M9 9h.01M15 9h.01"/>'},
+  {key:'okay',  label:'Biasa',    icon:'<circle cx="12" cy="12" r="9"/><path d="M8 14h8"/><path d="M9 9h.01M15 9h.01"/>'},
+  {key:'meh',   label:'Kurang',   icon:'<circle cx="12" cy="12" r="9"/><path d="M8 15s1.2-1 4-1 4 1 4 1"/><path d="M9 9h.01M15 9h.01"/>'},
+  {key:'bad',   label:'Sedih',    icon:'<circle cx="12" cy="12" r="9"/><path d="M8 16s1.2-2 4-2 4 2 4 2"/><path d="M9 9h.01M15 9h.01"/>'},
+];
+
+const DEFAULT_HABITS = [
+  {id:'tahajud', name:'Sholat Tahajud', icon:'moon', type:'check'},
+  {id:'dhuha',   name:'Sholat Dhuha',   icon:'sun', type:'check'},
+  {id:'dzikir',  name:'Dzikir', icon:'heart', type:'check'},
+  {id:'quran',   name:"Baca Al-Qur'an", icon:'book', type:'check'},
+  {id:'ulang',   name:'Ulang Pelajaran Sekolah', icon:'bookOpen', type:'check'},
+  {id:'les',     name:'Kerjakan Tugas Les', icon:'pencil', type:'check'},
+  {id:'soal',    name:'Latihan Soal (min. 10)', icon:'brain', type:'check'},
+  {id:'gym',     name:'Gym', icon:'dumbbell', type:'check'},
+  {id:'phonebreak', name:'Break dari HP (selain tidur)', icon:'phoneOff', type:'count', target:2, unit:'jam', step:0.5},
+  {id:'water',   name:'Minum Air Putih', icon:'droplet', type:'count', target:2, unit:'L', step:0.5},
+];
+
+const DOW = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+/* ---------------- STATE ---------------- */
+let session = null;          // { uid, email, name, photo }
+let habits = [];
+let monthData = {};          // { 'YYYY-MM-DD': { habitId: true|number } }
+let viewDate = new Date();
+let selectedDate = new Date();
+let pickedIcon = 'star';
+let pickedType = 'check';
+let allowedEmails = [];
+let journalMonthData = {};   // { 'YYYY-MM-DD': { mood, note } }
+let goals = { lifeGoal: '', monthlyTargets: {} };
+let activeTab = 'habits';
+
+/* ---------------- STATIC ICON SETUP ---------------- */
+document.getElementById('monthlyTargetBadge').innerHTML = iconSvg('target');
+document.getElementById('lifeGoalBadge').innerHTML = iconSvg('heart');
+document.getElementById('editMonthlyTargetBtn').innerHTML = iconSvg('pencil');
+document.getElementById('editLifeGoalBtn').innerHTML = iconSvg('pencil');
+document.getElementById('tabBtnHabits').innerHTML = iconSvg('check') + ' Kebiasaan';
+document.getElementById('tabBtnJournal').innerHTML = iconSvg('bookOpen') + ' Jurnal & Mood';
+
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function monthKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
+function monthKeyFromDateKey(k){ return k.split('-').slice(0,2).join('-'); }
+function isHabitDone(h, val){
+  if(h.type === 'count') return (Number(val)||0) >= (h.target||0);
+  return !!val;
+}
+
+/* ---------------- FIRESTORE HELPERS ---------------- */
+async function loadHabits(){
+  try{
+    const snap = await getDoc(doc(db,'habits','main'));
+    if(snap.exists() && Array.isArray(snap.data().habits)){
+      habits = snap.data().habits.map(h => ({type:'check', ...h}));
+      return;
+    }
+  }catch(e){ console.error(e); }
+  habits = DEFAULT_HABITS.slice();
+  await saveHabits();
+}
+async function saveHabits(){
+  try{ await setDoc(doc(db,'habits','main'), {habits}); }
+  catch(e){ console.error('Gagal menyimpan daftar kebiasaan', e); }
+}
+async function loadMonthData(mKey){
+  monthData = {};
+  journalMonthData = {};
+  try{
+    const q = query(collection(db,'days'), where('month','==',mKey));
+    const qs = await getDocs(q);
+    qs.forEach(d => {
+      const data = d.data() || {};
+      monthData[d.id] = data.entries || {};
+      journalMonthData[d.id] = data.journal || {};
+    });
+  }catch(e){ console.error('Gagal memuat data bulan', e); }
+}
+async function saveDay(dKey, obj){
+  try{ await setDoc(doc(db,'days',dKey), {month: monthKeyFromDateKey(dKey), entries: obj}, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
+}
+
+/* ---------------- RENDER: SUMMARY ---------------- */
+function doneCountForDay(dKey){
+  const obj = monthData[dKey] || {};
+  return habits.filter(h => isHabitDone(h, obj[h.id])).length;
+}
+
+function renderSummary(){
+  const todayKey = dateKey(new Date());
+  const todayDone = doneCountForDay(todayKey);
+  const todayPct = habits.length ? Math.round((todayDone/habits.length)*100) : 0;
+
+  const y = viewDate.getFullYear(), m = viewDate.getMonth();
+  const totalDaysInMonth = new Date(y, m+1, 0).getDate();
+  let monthDoneCells = 0, monthPossible = 0;
+  for(let d=1; d<=totalDaysInMonth; d++){
+    const k = `${y}-${pad(m+1)}-${pad(d)}`;
+    if(new Date(y,m,d) <= new Date()){
+      monthPossible += habits.length;
+      monthDoneCells += doneCountForDay(k);
+    }
+  }
+  const monthPct = monthPossible ? Math.round((monthDoneCells/monthPossible)*100) : 0;
+
+  let streak = 0;
+  let cursor = new Date();
+  while(true){
+    const k = dateKey(cursor);
+    if(habits.length && doneCountForDay(k) === habits.length){
+      streak++;
+      cursor.setDate(cursor.getDate()-1);
+    } else break;
+  }
+
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="summary-card clay-raised sc-yellow">
+      <div class="badge">${iconSvg('star')}</div>
+      <div class="summary-text"><b>${todayPct}%</b><small>Hari Ini · ${todayDone}/${habits.length} selesai</small></div>
+    </div>
+    <div class="summary-card clay-raised sc-blue">
+      <div class="badge">${iconSvg('droplet')}</div>
+      <div class="summary-text"><b>${monthPct}%</b><small>Bulan Ini · ${MONTHS[m]}</small></div>
+    </div>
+    <div class="summary-card clay-raised sc-pink">
+      <div class="badge">${iconSvg('target')}</div>
+      <div class="summary-text"><b>${streak}</b><small>Streak hari berturut-turut</small></div>
+    </div>
+  `;
+
+  document.getElementById('heroCard').innerHTML = `
+    <div class="hero-text">
+      <b>Performa Minggu Ini</b>
+      <small>${MONTHS[m]} · rata-rata kebiasaan selesai</small>
+    </div>
+    <div class="hero-ring" style="--pct:${monthPct}"><span>${monthPct}%</span></div>
+  `;
+}
+
+/* ---------------- RENDER: CALENDAR ---------------- */
+function renderCalendar(){
+  document.getElementById('monthLabel').textContent = `${MONTHS[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
+  const dowRow = document.getElementById('calDow');
+  dowRow.innerHTML = DOW.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  const y = viewDate.getFullYear(), m = viewDate.getMonth();
+  const firstDow = (new Date(y,m,1).getDay() + 6) % 7;
+  const totalDays = new Date(y, m+1, 0).getDate();
+  const grid = document.getElementById('calGrid');
+  let html = '';
+  for(let i=0;i<firstDow;i++) html += `<div class="cal-cell empty"></div>`;
+  for(let d=1; d<=totalDays; d++){
+    const k = `${y}-${pad(m+1)}-${pad(d)}`;
+    const pct = habits.length ? Math.round((doneCountForDay(k)/habits.length)*100) : 0;
+    const isToday = dateKey(new Date()) === k;
+    const isSelected = dateKey(selectedDate) === k;
+    html += `<button class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" data-date="${k}">
+      <span>${d}</span>
+      <span class="dot-ring" style="--p:${pct}"></span>
+    </button>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.cal-cell[data-date]').forEach(el=>{
+    el.addEventListener('click', () => {
+      const [yy,mm,dd] = el.dataset.date.split('-').map(Number);
+      selectedDate = new Date(yy, mm-1, dd);
+      renderCalendar();
+      renderDayPanel();
+      if(activeTab === 'journal') renderJournalTab();
+    });
+  });
+}
+
+/* ---------------- RENDER: DAY PANEL ---------------- */
+function renderDayPanel(){
+  const k = dateKey(selectedDate);
+  const dayObj = monthData[k] || {};
+  const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  document.getElementById('dayLabel').textContent =
+    `${dayNames[selectedDate.getDay()]}, ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+
+  const list = document.getElementById('habitList');
+  if(!habits.length){
+    list.innerHTML = `<div class="state-msg">Belum ada kebiasaan. Tambahkan dulu di bawah ya.</div>`;
+    return;
+  }
+  list.innerHTML = habits.map(h => {
+    if(h.type === 'count'){
+      const val = Number(dayObj[h.id]) || 0;
+      const done = isHabitDone(h, val);
+      return `<div class="habit-row">
+        <div class="habit-icon">${iconSvg(h.icon)}</div>
+        <div class="habit-body">
+          <span class="habit-name">${h.name}</span>
+          <span class="habit-sub">${done? 'Target tercapai ✓' : `target ${h.target} ${h.unit}`}</span>
+        </div>
+        <div class="stepper">
+          <button class="step-btn clay-btn" data-step="-1" data-id="${h.id}">${iconSvg('minus')}</button>
+          <span class="step-val">${val} ${h.unit}</span>
+          <button class="step-btn clay-btn" data-step="1" data-id="${h.id}">${iconSvg('plus')}</button>
+        </div>
+        <button class="edit-btn" data-edit="${h.id}">${iconSvg('pencil')}</button>
+        <button class="del-btn" data-del="${h.id}">${iconSvg('trash')}</button>
+      </div>`;
+    }
+    const on = !!dayObj[h.id];
+    return `<div class="habit-row">
+      <div class="habit-icon">${iconSvg(h.icon)}</div>
+      <div class="habit-body"><span class="habit-name">${h.name}</span></div>
+      <button class="toggle-btn ${on?'on':'off clay-btn'}" data-id="${h.id}">${iconSvg('check')}</button>
+      <button class="edit-btn" data-edit="${h.id}">${iconSvg('pencil')}</button>
+      <button class="del-btn" data-del="${h.id}">${iconSvg('trash')}</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.toggle-btn').forEach(btn=>{
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const obj = monthData[k] || (monthData[k] = {});
+      obj[id] = !obj[id];
+      await saveDay(k, obj);
+      renderDayPanel(); renderCalendar(); renderSummary();
+    });
+  });
+  list.querySelectorAll('.step-btn').forEach(btn=>{
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const h = habits.find(x=>x.id===id);
+      const delta = Number(btn.dataset.step) * (h.step || 1);
+      const obj = monthData[k] || (monthData[k] = {});
+      let val = Number(obj[id]) || 0;
+      val = Math.max(0, Math.round((val + delta) * 100) / 100);
+      obj[id] = val;
+      await saveDay(k, obj);
+      renderDayPanel(); renderCalendar(); renderSummary();
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.del;
+      if(!confirm('Hapus kebiasaan ini dari daftar?')) return;
+      habits = habits.filter(h=>h.id!==id);
+      await saveHabits();
+      renderDayPanel(); renderSummary();
+    });
+  });
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', () => {
+      const h = habits.find(x=>x.id===btn.dataset.edit);
+      if(!h) return;
+      openEditForm(h);
+    });
+  });
+}
+
+/* ---------------- ADD HABIT FORM ---------------- */
+function renderIconPicker(){
+  const grid = document.getElementById('iconPickGrid');
+  grid.innerHTML = ICON_PICK_OPTIONS.map(key =>
+    `<button type="button" class="icon-pick ${key===pickedIcon?'chosen':''}" data-icon="${key}">${iconSvg(key)}</button>`
+  ).join('');
+  grid.querySelectorAll('.icon-pick').forEach(el=>{
+    el.addEventListener('click', () => { pickedIcon = el.dataset.icon; renderIconPicker(); });
+  });
+}
+function setType(type){
+  pickedType = type;
+  document.getElementById('typeCheckBtn').classList.toggle('active', type==='check');
+  document.getElementById('typeCountBtn').classList.toggle('active', type==='count');
+  document.getElementById('countFields').classList.toggle('show', type==='count');
+}
+document.getElementById('typeCheckBtn').addEventListener('click', () => setType('check'));
+document.getElementById('typeCountBtn').addEventListener('click', () => setType('count'));
+
+let editingHabitId = null;
+
+function resetAddForm(){
+  editingHabitId = null;
+  pickedIcon = 'star';
+  document.getElementById('newHabitName').value = '';
+  document.getElementById('newHabitTarget').value = '';
+  document.getElementById('newHabitUnit').value = '';
+  setType('check');
+  renderIconPicker();
+  document.getElementById('saveAdd').textContent = 'Simpan';
+}
+
+function openEditForm(h){
+  editingHabitId = h.id;
+  pickedIcon = h.icon;
+  document.getElementById('newHabitName').value = h.name;
+  document.getElementById('newHabitTarget').value = h.target || '';
+  document.getElementById('newHabitUnit').value = h.unit || '';
+  setType(h.type === 'count' ? 'count' : 'check');
+  renderIconPicker();
+  document.getElementById('saveAdd').textContent = 'Update';
+  document.getElementById('addForm').classList.add('show');
+  document.getElementById('addForm').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+document.getElementById('showAddForm').addEventListener('click', () => {
+  resetAddForm();
+  document.getElementById('addForm').classList.add('show');
+});
+document.getElementById('cancelAdd').addEventListener('click', () => {
+  document.getElementById('addForm').classList.remove('show');
+  resetAddForm();
+});
+document.getElementById('saveAdd').addEventListener('click', async () => {
+  const name = document.getElementById('newHabitName').value.trim();
+  if(!name){ alert('Isi dulu nama kebiasaannya ya.'); return; }
+  const habitData = {name, icon: pickedIcon, type: pickedType};
+  if(pickedType === 'count'){
+    const target = parseFloat(document.getElementById('newHabitTarget').value) || 1;
+    const unit = document.getElementById('newHabitUnit').value.trim() || 'x';
+    habitData.target = target;
+    habitData.unit = unit;
+    habitData.step = target <= 5 ? 0.5 : 1;
+  }
+  if(editingHabitId){
+    const idx = habits.findIndex(h=>h.id===editingHabitId);
+    if(idx > -1) habits[idx] = {id: editingHabitId, ...habitData};
+  } else {
+    habits.push({id: 'h_' + Date.now(), ...habitData});
+  }
+  await saveHabits();
+  document.getElementById('addForm').classList.remove('show');
+  resetAddForm();
+  renderDayPanel(); renderSummary();
+});
+
+/* ---------------- TABS ---------------- */
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById('tabBtnHabits').classList.toggle('active', tab==='habits');
+  document.getElementById('tabBtnJournal').classList.toggle('active', tab==='journal');
+  document.getElementById('tabHabits').classList.toggle('active', tab==='habits');
+  document.getElementById('tabJournal').classList.toggle('active', tab==='journal');
+  if(tab === 'journal') renderJournalTab();
+}
+document.getElementById('tabBtnHabits').addEventListener('click', () => switchTab('habits'));
+document.getElementById('tabBtnJournal').addEventListener('click', () => switchTab('journal'));
+
+/* ---------------- MOOD & JOURNAL ---------------- */
+function renderJournalTab(){
+  const k = dateKey(selectedDate);
+  const isToday = k === dateKey(new Date());
+  const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const dLabel = `${dayNames[selectedDate.getDay()]}, ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+  document.getElementById('moodDateLabel').textContent = isToday ? 'Mood Hari Ini' : `Mood — ${dLabel}`;
+  document.getElementById('journalDateLabel').textContent = isToday ? 'Jurnal Harian' : `Jurnal — ${dLabel}`;
+
+  const entry = journalMonthData[k] || {};
+  const moodGrid = document.getElementById('moodGrid');
+  moodGrid.innerHTML = MOODS.map(m => `
+    <button type="button" class="mood-opt ${entry.mood===m.key?'selected':''}" data-mood="${m.key}">
+      <svg class="icon" viewBox="0 0 24 24">${m.icon}</svg>
+      <span>${m.label}</span>
+    </button>`).join('');
+  moodGrid.querySelectorAll('[data-mood]').forEach(btn=>{
+    btn.addEventListener('click', async () => {
+      const mood = btn.dataset.mood;
+      const cur = journalMonthData[k] || (journalMonthData[k] = {});
+      cur.mood = (cur.mood === mood) ? null : mood;
+      await saveJournal(k, cur);
+      renderJournalTab();
+    });
+  });
+
+  document.getElementById('journalText').value = entry.note || '';
+  document.getElementById('journalStatus').textContent = '';
+}
+document.getElementById('saveJournalBtn').addEventListener('click', async () => {
+  const k = dateKey(selectedDate);
+  const cur = journalMonthData[k] || (journalMonthData[k] = {});
+  cur.note = document.getElementById('journalText').value;
+  await saveJournal(k, cur);
+  const status = document.getElementById('journalStatus');
+  status.textContent = 'Tersimpan ✓';
+  setTimeout(() => { status.textContent = ''; }, 2500);
+});
+async function saveJournal(dKey, entry){
+  try{ await setDoc(doc(db,'days',dKey), {month: monthKeyFromDateKey(dKey), journal: entry}, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan jurnal', e); }
+}
+
+/* ---------------- GOALS (Target Bulan Ini & Life Goal) ---------------- */
+async function loadGoals(){
+  try{
+    const snap = await getDoc(doc(db,'goals','main'));
+    if(snap.exists()){
+      const d = snap.data();
+      goals.lifeGoal = d.lifeGoal || '';
+      goals.monthlyTargets = d.monthlyTargets || {};
+      return;
+    }
+  }catch(e){ console.error(e); }
+  goals = {lifeGoal:'', monthlyTargets:{}};
+}
+async function saveGoals(){
+  try{ await setDoc(doc(db,'goals','main'), goals, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan goals', e); }
+}
+function renderGoals(){
+  const mKey = monthKey(viewDate);
+  const target = goals.monthlyTargets[mKey] || '';
+  const targetEl = document.getElementById('monthlyTargetText');
+  targetEl.textContent = target || 'Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.';
+  targetEl.classList.toggle('empty', !target);
+  document.getElementById('monthlyTargetLabel').textContent = `Target ${MONTHS[viewDate.getMonth()]}`;
+
+  const lifeEl = document.getElementById('lifeGoalText');
+  lifeEl.textContent = goals.lifeGoal || 'Belum diisi. Tulis cita-cita atau tujuan hidup jangka panjang.';
+  lifeEl.classList.toggle('empty', !goals.lifeGoal);
+}
+document.getElementById('editMonthlyTargetBtn').addEventListener('click', () => {
+  const mKey = monthKey(viewDate);
+  document.getElementById('monthlyTargetInput').value = goals.monthlyTargets[mKey] || '';
+  document.getElementById('monthlyTargetView').style.display = 'none';
+  document.getElementById('monthlyTargetInput').style.display = 'block';
+  document.getElementById('monthlyTargetActions').classList.add('show');
+});
+document.getElementById('cancelMonthlyTarget').addEventListener('click', () => {
+  document.getElementById('monthlyTargetView').style.display = 'block';
+  document.getElementById('monthlyTargetInput').style.display = 'none';
+  document.getElementById('monthlyTargetActions').classList.remove('show');
+});
+document.getElementById('saveMonthlyTarget').addEventListener('click', async () => {
+  const mKey = monthKey(viewDate);
+  goals.monthlyTargets[mKey] = document.getElementById('monthlyTargetInput').value.trim();
+  await saveGoals();
+  renderGoals();
+  document.getElementById('monthlyTargetView').style.display = 'block';
+  document.getElementById('monthlyTargetInput').style.display = 'none';
+  document.getElementById('monthlyTargetActions').classList.remove('show');
+});
+document.getElementById('editLifeGoalBtn').addEventListener('click', () => {
+  document.getElementById('lifeGoalInput').value = goals.lifeGoal || '';
+  document.getElementById('lifeGoalView').style.display = 'none';
+  document.getElementById('lifeGoalInput').style.display = 'block';
+  document.getElementById('lifeGoalActions').classList.add('show');
+});
+document.getElementById('cancelLifeGoal').addEventListener('click', () => {
+  document.getElementById('lifeGoalView').style.display = 'block';
+  document.getElementById('lifeGoalInput').style.display = 'none';
+  document.getElementById('lifeGoalActions').classList.remove('show');
+});
+document.getElementById('saveLifeGoal').addEventListener('click', async () => {
+  goals.lifeGoal = document.getElementById('lifeGoalInput').value.trim();
+  await saveGoals();
+  renderGoals();
+  document.getElementById('lifeGoalView').style.display = 'block';
+  document.getElementById('lifeGoalInput').style.display = 'none';
+  document.getElementById('lifeGoalActions').classList.remove('show');
+});
+
+/* ---------------- MONTH NAV ---------------- */
+document.getElementById('prevMonth').addEventListener('click', async () => {
+  viewDate.setMonth(viewDate.getMonth()-1);
+  await loadMonthData(monthKey(viewDate));
+  renderCalendar(); renderSummary(); renderGoals();
+});
+document.getElementById('nextMonth').addEventListener('click', async () => {
+  viewDate.setMonth(viewDate.getMonth()+1);
+  await loadMonthData(monthKey(viewDate));
+  renderCalendar(); renderSummary(); renderGoals();
+});
+
+/* ---------------- ACCESS LIST (Firestore: access/main) ---------------- */
+const DEFAULT_PARENT_EMAIL = 'anisahknia@gmail.com';
+
+function norm(email){ return (email||'').trim().toLowerCase(); }
+
+async function ensureAccessAndCheck(email){
+  const ref = doc(db,'access','main');
+  const snap = await getDoc(ref);
+  if(!snap.exists()){
+    const seed = Array.from(new Set([DEFAULT_PARENT_EMAIL, norm(email)]));
+    await setDoc(ref, {emails: seed});
+    allowedEmails = seed;
+    return true;
+  }
+  const list = Array.isArray(snap.data().emails) ? snap.data().emails.map(norm) : [];
+  allowedEmails = list.includes(DEFAULT_PARENT_EMAIL) ? list : [...list, DEFAULT_PARENT_EMAIL];
+  return allowedEmails.includes(norm(email));
+}
+async function addAccessEmail(email){
+  const e = norm(email);
+  if(!e || !e.includes('@')) throw new Error('invalid');
+  await updateDoc(doc(db,'access','main'), {emails: arrayUnion(e)});
+  if(!allowedEmails.includes(e)) allowedEmails.push(e);
+}
+async function removeAccessEmail(email){
+  const e = norm(email);
+  await updateDoc(doc(db,'access','main'), {emails: arrayRemove(e)});
+  allowedEmails = allowedEmails.filter(x => x !== e);
+}
+function renderAccessList(){
+  const wrap = document.getElementById('accessList');
+  wrap.innerHTML = allowedEmails.map(e => `
+    <div class="access-row">
+      <span class="access-email">${e}</span>
+      <span style="display:flex; align-items:center; gap:6px;">
+        ${e === DEFAULT_PARENT_EMAIL ? '<span class="access-tag">Orang Tua</span>' : ''}
+        ${e === norm(session.email) ? '<span class="access-tag">Kamu</span>' : `<button type="button" data-remove="${e}">${iconSvg('x')}</button>`}
+      </span>
+    </div>`).join('');
+  wrap.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if(!confirm(`Cabut akses untuk ${btn.dataset.remove}?`)) return;
+      try{ await removeAccessEmail(btn.dataset.remove); renderAccessList(); }
+      catch(e){ console.error(e); }
+    });
+  });
+}
+document.getElementById('manageAccessBtn').addEventListener('click', () => {
+  renderAccessList();
+  document.getElementById('accessModal').classList.add('show');
+});
+document.getElementById('closeAccessModal').addEventListener('click', () => {
+  document.getElementById('accessModal').classList.remove('show');
+});
+document.getElementById('addAccessBtn').addEventListener('click', async () => {
+  const input = document.getElementById('newAccessEmail');
+  const errEl = document.getElementById('accessError');
+  errEl.textContent = '';
+  const val = input.value.trim();
+  if(!val || !val.includes('@')){ errEl.textContent = 'Masukkan alamat email Google yang valid.'; return; }
+  try{
+    await addAccessEmail(val);
+    input.value = '';
+    renderAccessList();
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Gagal menambahkan akses. Coba lagi.';
+  }
+});
+
+/* ---------------- AUTH (Firebase Google Sign-In) ---------------- */
+document.getElementById('googleSignInBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('authError');
+  const btn = document.getElementById('googleSignInBtn');
+  errEl.textContent = '';
+  btn.disabled = true;
+  try{
+    await signInWithPopup(auth, googleProvider);
+    // onAuthStateChanged handles the rest
+  }catch(e){
+    console.error(e);
+    errEl.textContent = 'Gagal masuk dengan Google. Coba lagi ya.';
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+document.getElementById('deniedLogoutBtn').addEventListener('click', () => signOut(auth));
+
+function showScreen(id){
+  ['authScreen','deniedScreen','appScreen'].forEach(s => {
+    document.getElementById(s).style.display = (s===id) ? (s==='appScreen' ? 'block' : 'block') : 'none';
+  });
+}
+
+onAuthStateChanged(auth, async (user) => {
+  document.getElementById('accessModal').classList.remove('show');
+  if(!user){
+    session = null;
+    showScreen('authScreen');
+    return;
+  }
+  const email = user.email || '';
+  let allowed = false;
+  try{ allowed = await ensureAccessAndCheck(email); }
+  catch(e){ console.error(e); }
+
+  if(!allowed){
+    document.getElementById('deniedEmailText').textContent = `Akun ${email} belum punya akses ke tracker ini.`;
+    showScreen('deniedScreen');
+    return;
+  }
+
+  session = { uid: user.uid, email, name: user.displayName || email, photo: user.photoURL || '' };
+  document.getElementById('userEmailLabel').textContent = session.name;
+  const avatar = document.getElementById('userAvatar');
+  if(session.photo){ avatar.src = session.photo; avatar.style.display = 'inline-block'; }
+  else { avatar.style.display = 'none'; }
+
+  try{
+    await loadHabits();
+    await loadMonthData(monthKey(viewDate));
+    await loadGoals();
+    showScreen('appScreen');
+    switchTab('habits');
+    renderCalendar();
+    renderDayPanel();
+    renderSummary();
+    renderGoals();
+  }catch(e){
+    console.error(e);
+    document.getElementById('authError').textContent = 'Gagal memuat data. Coba lagi ya.';
+    showScreen('authScreen');
+  }
+});
+</script>
+</body>
+</html>
