@@ -364,6 +364,20 @@
     .summary-card{min-width:100%;}
     .cal-grid{gap:4px;}
   }
+
+  /* ---------- CHILD SELECTOR ---------- */
+  .child-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:16px;border-radius:20px;}
+  .child-bar label{font-size:11px;font-weight:800;color:var(--ink-soft);white-space:nowrap;}
+  .child-select{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--card-soft);border-radius:14px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink);outline:none;}
+  .child-add-btn{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,var(--purple) 0%,var(--blue) 100%);}
+  .child-meta{font-size:10.5px;color:var(--ink-soft);font-weight:700;}
+  .child-modal-grid{display:grid;gap:10px;}
+  .child-modal-grid input{width:100%;padding:11px 13px;border-radius:14px;border:1.5px solid var(--line);background:var(--card-soft);font-size:13.5px;font-family:inherit;outline:none;}
+  .journal-date-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;}
+  .journal-date-row label{font-size:11px;font-weight:800;color:var(--ink-soft);}
+  .journal-date-row input{flex:1;padding:9px 11px;border-radius:13px;border:1.5px solid var(--line);background:var(--card-soft);font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink);outline:none;}
+  .child-modal-grid input:focus{border-color:var(--purple);}
+
 </style>
 </head>
 <body>
@@ -388,6 +402,22 @@
   <p id="deniedEmailText"></p>
   <p>Minta pemilik tracker menambahkan email ini lewat menu "Kelola Akses" setelah mereka login.</p>
   <button class="primary-btn clay-btn clay-btn-teal" id="deniedLogoutBtn" type="button" style="width:100%;margin-top:16px;">Ganti Akun / Keluar</button>
+</div>
+
+<div class="modal-overlay" id="childModal">
+  <div class="modal-card clay-raised">
+    <h2>Tambah Anak</h2>
+    <p class="hint">Setiap anak punya kebiasaan, progress, target, mood, dan jurnal hariannya sendiri.</p>
+    <div class="child-modal-grid">
+      <input id="newChildName" type="text" maxlength="50" placeholder="Nama anak">
+      <input id="newChildClass" type="text" maxlength="40" placeholder="Kelas (opsional), mis. 5 SD">
+    </div>
+    <div id="childError" style="color:var(--danger);font-size:12px;margin-top:8px;min-height:14px;font-weight:700;"></div>
+    <div class="form-actions" style="margin-top:12px;">
+      <button class="btn-cancel clay-btn" id="cancelChildBtn" type="button">Batal</button>
+      <button class="btn-save clay-btn clay-btn-teal" id="saveChildBtn" type="button">Simpan Anak</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="accessModal">
@@ -427,6 +457,12 @@
         </button>
       </div>
     </header>
+
+    <div class="child-bar clay-raised">
+      <label for="childSelect">ANAK AKTIF</label>
+      <select id="childSelect" class="child-select"></select>
+      <button class="child-add-btn clay-btn" id="addChildBtn" type="button" title="Tambah anak">${''}</button>
+    </div>
 
     <div class="goals-row">
       <div class="goal-card clay-raised gc-yellow">
@@ -508,7 +544,11 @@
       </div>
       <div class="journal-card clay-raised">
         <h2 id="journalDateLabel">Jurnal Harian</h2>
-        <p class="sub">Tulis apa saja yang terjadi atau dirasakan hari ini.</p>
+        <div class="journal-date-row">
+          <label for="journalDatePicker">Tanggal</label>
+          <input id="journalDatePicker" type="date">
+        </div>
+        <p class="sub">Tulis apa saja yang terjadi atau dirasakan pada tanggal yang dipilih.</p>
         <textarea id="journalText" maxlength="2000" placeholder="Hari ini aku..."></textarea>
         <div class="journal-save-row">
           <span class="journal-status" id="journalStatus"></span>
@@ -517,7 +557,7 @@
       </div>
     </div>
 
-    <footer class="note">Data tersimpan otomatis di akun keluarga & bisa dipantau dari HP mana pun yang login. Ketuk lingkaran tanggal untuk pindah hari.</footer>
+    <footer class="note">Data tersimpan otomatis per anak & bisa dipantau dari HP mana pun yang punya akses. Ketuk lingkaran tanggal untuk pindah hari.</footer>
   </div>
 </div>
 
@@ -529,7 +569,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove,
-  collection, query, where, getDocs
+  collection, query, where, getDocs, deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -599,8 +639,10 @@ const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustu
 
 /* ---------------- STATE ---------------- */
 let session = null;          // { uid, email, name, photo }
+let children = [];            // [{id,name,className}]
+let activeChild = null;       // current child object
 let habits = [];
-let monthData = {};          // { 'YYYY-MM-DD': { habitId: true|number } }
+let monthData = {};           // { 'YYYY-MM-DD': { habitId: true|number } }
 let viewDate = new Date();
 let selectedDate = new Date();
 let pickedIcon = 'star';
@@ -628,37 +670,105 @@ function isHabitDone(h, val){
 }
 
 /* ---------------- FIRESTORE HELPERS ---------------- */
-async function loadHabits(){
+async function loadChildren(){
+  children = [];
+  if(!session?.uid) return;
   try{
-    const snap = await getDoc(doc(db,'habits','main'));
-    if(snap.exists() && Array.isArray(snap.data().habits)){
-      habits = snap.data().habits.map(h => ({type:'check', ...h}));
-      return;
+    const qs = await getDocs(collection(db,'families','main','children'));
+    qs.forEach(s => children.push({id:s.id, ...s.data()}));
+    children.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
+  }catch(e){ console.error('Gagal memuat daftar anak', e); }
+}
+
+async function saveChild(child){
+  if(!session?.uid) throw new Error('No session');
+  await setDoc(doc(db,'families','main','children',child.id), {
+    name: child.name,
+    className: child.className || '',
+    createdAt: child.createdAt || Date.now()
+  }, {merge:true});
+}
+
+async function createChild(name, className=''){
+  const id = 'child_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const child = {id, name, className, createdAt: Date.now()};
+  await saveChild(child);
+  children.push(child);
+  children.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
+  activeChild = child;
+  await initializeChildDefaults();
+}
+
+async function initializeChildDefaults(){
+  if(!activeChild) return;
+  const habitsRef = collection(db,'families','main','children',activeChild.id,'habits');
+  const existing = await getDocs(habitsRef);
+  if(existing.empty){
+    for(const h of DEFAULT_HABITS){
+      await setDoc(doc(habitsRef,h.id), h);
     }
-  }catch(e){ console.error(e); }
-  habits = DEFAULT_HABITS.slice();
-  await saveHabits();
+  }
+  habits = [];
+  const hs = await getDocs(habitsRef);
+  hs.forEach(s => habits.push({type:'check', ...s.data(), id:s.id}));
+  habits.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
 }
+
+async function loadHabits(){
+  if(!activeChild) return;
+  habits = [];
+  try{
+    const qs = await getDocs(collection(db,'families','main','children',activeChild.id,'habits'));
+    qs.forEach(s => habits.push({type:'check', ...s.data(), id:s.id}));
+    habits.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
+    if(!habits.length) await initializeChildDefaults();
+  }catch(e){ console.error('Gagal memuat kebiasaan anak', e); }
+}
+
 async function saveHabits(){
-  try{ await setDoc(doc(db,'habits','main'), {habits}); }
-  catch(e){ console.error('Gagal menyimpan daftar kebiasaan', e); }
+  if(!activeChild) return;
+  try{
+    const col = collection(db,'families','main','children',activeChild.id,'habits');
+    const existing = await getDocs(col);
+    const currentIds = new Set(habits.map(h=>h.id));
+    const writes = habits.map(h => setDoc(doc(col,h.id), h));
+    const deletes = existing.docs
+      .filter(s => !currentIds.has(s.id))
+      .map(s => deleteDoc(doc(col,s.id)));
+    await Promise.all([...writes, ...deletes]);
+  }catch(e){ console.error('Gagal menyimpan daftar kebiasaan', e); }
 }
+
 async function loadMonthData(mKey){
   monthData = {};
   journalMonthData = {};
+  if(!activeChild) return;
   try{
-    const q = query(collection(db,'days'), where('month','==',mKey));
+    const q = query(
+      collection(db,'families','main','children',activeChild.id,'days'),
+      where('month','==',mKey)
+    );
     const qs = await getDocs(q);
-    qs.forEach(d => {
-      const data = d.data() || {};
-      monthData[d.id] = data.entries || {};
-      journalMonthData[d.id] = data.journal || {};
+    qs.forEach(s => {
+      const data = s.data() || {};
+      monthData[s.id] = data.entries || {};
+      journalMonthData[s.id] = {
+        mood: data.mood || null,
+        note: data.journal || ''
+      };
     });
   }catch(e){ console.error('Gagal memuat data bulan', e); }
 }
+
 async function saveDay(dKey, obj){
-  try{ await setDoc(doc(db,'days',dKey), {month: monthKeyFromDateKey(dKey), entries: obj}, {merge:true}); }
-  catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
+  if(!activeChild) return;
+  try{
+    await setDoc(
+      doc(db,'families','main','children',activeChild.id,'days',dKey),
+      {month: monthKeyFromDateKey(dKey), entries: obj},
+      {merge:true}
+    );
+  }catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
 }
 
 /* ---------------- RENDER: SUMMARY ---------------- */
@@ -910,6 +1020,74 @@ document.getElementById('saveAdd').addEventListener('click', async () => {
   renderDayPanel(); renderSummary();
 });
 
+/* ---------------- CHILDREN ---------------- */
+function renderChildSelector(){
+  const select = document.getElementById('childSelect');
+  const label = document.getElementById('childLabel');
+  select.innerHTML = children.map(c =>
+    `<option value="${c.id}">${c.name}${c.className ? ' · '+c.className : ''}</option>`
+  ).join('');
+  if(activeChild){
+    select.value = activeChild.id;
+    label.textContent = activeChild.className
+      ? `${activeChild.name} · ${activeChild.className}`
+      : activeChild.name;
+  }else{
+    label.textContent = 'Belum ada anak';
+  }
+}
+
+async function switchChild(childId){
+  const child = children.find(c => c.id === childId);
+  if(!child) return;
+  activeChild = child;
+  renderChildSelector();
+  await loadHabits();
+  await loadMonthData(monthKey(viewDate));
+  await loadGoals();
+  renderCalendar();
+  renderDayPanel();
+  renderSummary();
+  renderGoals();
+  if(activeTab === 'journal') renderJournalTab();
+}
+
+document.getElementById('childSelect').addEventListener('change', async e => {
+  await switchChild(e.target.value);
+});
+
+document.getElementById('addChildBtn').addEventListener('click', () => {
+  document.getElementById('newChildName').value = '';
+  document.getElementById('newChildClass').value = '';
+  document.getElementById('childError').textContent = '';
+  document.getElementById('childModal').classList.add('show');
+  document.getElementById('newChildName').focus();
+});
+
+document.getElementById('cancelChildBtn').addEventListener('click', () => {
+  document.getElementById('childModal').classList.remove('show');
+});
+
+document.getElementById('saveChildBtn').addEventListener('click', async () => {
+  const name = document.getElementById('newChildName').value.trim();
+  const className = document.getElementById('newChildClass').value.trim();
+  const err = document.getElementById('childError');
+  err.textContent = '';
+  if(!name){ err.textContent = 'Nama anak wajib diisi.'; return; }
+  try{
+    await createChild(name,className);
+    document.getElementById('childModal').classList.remove('show');
+    renderChildSelector();
+    await loadHabits();
+    await loadMonthData(monthKey(viewDate));
+    await loadGoals();
+    renderCalendar(); renderDayPanel(); renderSummary(); renderGoals();
+  }catch(e){
+    console.error(e);
+    err.textContent = 'Gagal membuat profil anak. Coba lagi.';
+  }
+});
+
 /* ---------------- TABS ---------------- */
 function switchTab(tab){
   activeTab = tab;
@@ -928,6 +1106,7 @@ function renderJournalTab(){
   const isToday = k === dateKey(new Date());
   const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   const dLabel = `${dayNames[selectedDate.getDay()]}, ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+  document.getElementById('journalDatePicker').value = k;
   document.getElementById('moodDateLabel').textContent = isToday ? 'Mood Hari Ini' : `Mood — ${dLabel}`;
   document.getElementById('journalDateLabel').textContent = isToday ? 'Jurnal Harian' : `Jurnal — ${dLabel}`;
 
@@ -951,6 +1130,27 @@ function renderJournalTab(){
   document.getElementById('journalText').value = entry.note || '';
   document.getElementById('journalStatus').textContent = '';
 }
+document.getElementById('journalDatePicker').addEventListener('change', () => {
+  const val = document.getElementById('journalDatePicker').value;
+  if(!val) return;
+  const [yy,mm,dd] = val.split('-').map(Number);
+  selectedDate = new Date(yy, mm-1, dd);
+  const selectedMonth = monthKey(selectedDate);
+  if(selectedMonth !== monthKey(viewDate)){
+    viewDate = new Date(yy, mm-1, 1);
+    loadMonthData(selectedMonth).then(() => {
+      renderCalendar();
+      renderDayPanel();
+      renderSummary();
+      renderGoals();
+      renderJournalTab();
+    });
+  }else{
+    renderCalendar();
+    renderDayPanel();
+    renderJournalTab();
+  }
+});
 document.getElementById('saveJournalBtn').addEventListener('click', async () => {
   const k = dateKey(selectedDate);
   const cur = journalMonthData[k] || (journalMonthData[k] = {});
@@ -961,27 +1161,44 @@ document.getElementById('saveJournalBtn').addEventListener('click', async () => 
   setTimeout(() => { status.textContent = ''; }, 2500);
 });
 async function saveJournal(dKey, entry){
-  try{ await setDoc(doc(db,'days',dKey), {month: monthKeyFromDateKey(dKey), journal: entry}, {merge:true}); }
-  catch(e){ console.error('Gagal menyimpan jurnal', e); }
+  if(!activeChild) return;
+  try{
+    await setDoc(
+      doc(db,'families','main','children',activeChild.id,'days',dKey),
+      {
+        month: monthKeyFromDateKey(dKey),
+        mood: entry.mood || null,
+        journal: entry.note || ''
+      },
+      {merge:true}
+    );
+  }catch(e){ console.error('Gagal menyimpan jurnal', e); }
 }
 
 /* ---------------- GOALS (Target Bulan Ini & Life Goal) ---------------- */
 async function loadGoals(){
+  goals = {lifeGoal:'', monthlyTargets:{}};
+  if(!activeChild) return;
   try{
-    const snap = await getDoc(doc(db,'goals','main'));
+    const snap = await getDoc(doc(db,'families','main','children',activeChild.id,'settings','goals'));
     if(snap.exists()){
       const d = snap.data();
       goals.lifeGoal = d.lifeGoal || '';
       goals.monthlyTargets = d.monthlyTargets || {};
-      return;
     }
   }catch(e){ console.error(e); }
-  goals = {lifeGoal:'', monthlyTargets:{}};
 }
 async function saveGoals(){
-  try{ await setDoc(doc(db,'goals','main'), goals, {merge:true}); }
-  catch(e){ console.error('Gagal menyimpan goals', e); }
+  if(!activeChild) return;
+  try{
+    await setDoc(
+      doc(db,'families','main','children',activeChild.id,'settings','goals'),
+      goals,
+      {merge:true}
+    );
+  }catch(e){ console.error('Gagal menyimpan goals', e); }
 }
+
 function renderGoals(){
   const mKey = monthKey(viewDate);
   const target = goals.monthlyTargets[mKey] || '';
@@ -1144,6 +1361,7 @@ function showScreen(id){
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById('accessModal').classList.remove('show');
+  document.getElementById('childModal').classList.remove('show');
   if(!user){
     session = null;
     showScreen('authScreen');
@@ -1167,9 +1385,16 @@ onAuthStateChanged(auth, async (user) => {
   else { avatar.style.display = 'none'; }
 
   try{
+    await loadChildren();
+    if(!children.length){
+      await createChild('Anak Pertama', '');
+    }else{
+      activeChild = children[0];
+    }
     await loadHabits();
     await loadMonthData(monthKey(viewDate));
     await loadGoals();
+    renderChildSelector();
     showScreen('appScreen');
     switchTab('habits');
     renderCalendar();
