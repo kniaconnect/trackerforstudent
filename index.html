@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Habit Tracker Anak Sekolah</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#7B6EF6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Habit Tracker">
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
@@ -34,13 +43,45 @@
   body{
     margin:0;
     background:
-      radial-gradient(circle at 90% -6%, #E4E8FF 0%, transparent 40%),
-      radial-gradient(circle at -10% 105%, #FFE9D6 0%, transparent 38%),
+      radial-gradient(circle at 92% -8%, rgba(123,110,246,0.16) 0%, transparent 42%),
+      radial-gradient(circle at -12% 8%, rgba(76,141,246,0.14) 0%, transparent 36%),
+      radial-gradient(circle at 105% 38%, rgba(255,110,147,0.13) 0%, transparent 34%),
+      radial-gradient(circle at -8% 78%, rgba(246,169,59,0.16) 0%, transparent 36%),
+      radial-gradient(circle at 55% 108%, rgba(56,198,168,0.14) 0%, transparent 40%),
+      radial-gradient(circle at 50% -20%, rgba(255,233,214,0.5) 0%, transparent 45%),
       var(--bg);
+    background-attachment:fixed;
     font-family:'Nunito', sans-serif;
     color:var(--ink);
     padding:22px 14px 60px;
+    position:relative;
   }
+  /* subtle dotted texture so the flat background doesn't feel empty */
+  body::before{
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image: radial-gradient(rgba(98,86,232,0.10) 1.4px, transparent 1.4px);
+    background-size: 26px 26px;
+    background-position: 0 0;
+    -webkit-mask-image: radial-gradient(circle at 50% 20%, rgba(0,0,0,.9) 0%, rgba(0,0,0,.25) 55%, transparent 85%);
+    mask-image: radial-gradient(circle at 50% 20%, rgba(0,0,0,.9) 0%, rgba(0,0,0,.25) 55%, transparent 85%);
+    pointer-events:none;
+    z-index:0;
+  }
+  /* soft floating blob shapes, purely decorative, behind everything */
+  body::after{
+    content:'';
+    position:fixed;
+    top:-120px; right:-90px;
+    width:320px; height:320px;
+    border-radius:42% 58% 65% 35% / 45% 40% 60% 55%;
+    background:linear-gradient(135deg, rgba(123,110,246,0.20), rgba(76,141,246,0.10));
+    filter:blur(2px);
+    pointer-events:none;
+    z-index:0;
+  }
+  .wrap, #authScreen, #deniedScreen, .modal-overlay{ position:relative; z-index:1; }
   .icon{width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-0.15em;}
   .wrap{max-width:760px; margin:0 auto;}
   button{font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;}
@@ -185,12 +226,23 @@
     display:flex; align-items:center; justify-content:center;
   }
   .toggle-btn svg{width:16px; height:16px;}
-  .toggle-btn.on{ background:linear-gradient(135deg,var(--green2),#2FB89B); color:#fff; }
+  .toggle-btn.on{ background:linear-gradient(135deg,var(--yellow) 0%, #E8901F 100%); color:#fff; box-shadow: 0 8px 16px rgba(246,169,59,0.38); }
   .toggle-btn.off{ background:var(--card); box-shadow: var(--shadow-sm); }
+  .habit-row.done{ background:var(--yellow-soft); }
 
   .stepper{display:flex; align-items:center; gap:6px; flex-shrink:0;}
   .step-btn{ width:28px; height:28px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; color:var(--purple-deep);}
   .step-val{min-width:56px; text-align:center; font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink);}
+  .step-val.done{ color:var(--yellow); }
+
+  /* glass picker (water-type habit) */
+  .glass-picker{display:flex; align-items:center; gap:4px; flex-wrap:wrap; flex-shrink:0;}
+  .glass-btn{
+    width:24px; height:28px; border-radius:6px 6px 12px 12px; background:var(--card-soft); box-shadow:none;
+    color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;
+  }
+  .glass-btn svg{width:13px; height:13px;}
+  .glass-btn.filled{ background:linear-gradient(135deg,var(--yellow) 0%, #E8901F 100%); color:#fff; }
 
   .del-btn{
     width:28px; height:28px; border-radius:10px; background:transparent; color:var(--ink-soft); box-shadow:none;
@@ -282,13 +334,17 @@
     font-size:14px; font-family:inherit; margin-bottom:10px; outline:none;
   }
   .add-habit-form input:focus{border-color:var(--purple);}
-  .type-toggle{display:flex; gap:8px; margin-bottom:10px;}
-  .type-toggle button{ flex:1; padding:9px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink-soft); background:var(--card);
+  .type-toggle{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .type-toggle button{ flex:1; min-width:88px; padding:9px 6px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; font-size:11.5px; color:var(--ink-soft); background:var(--card);
     box-shadow: var(--shadow-sm);}
   .type-toggle button.active{ color:#fff; background:linear-gradient(135deg,var(--purple) 0%, var(--blue) 100%); box-shadow:none;}
   .count-fields{display:none; gap:8px;}
   .count-fields.show{display:flex;}
   .count-fields input{flex:1;}
+  .glass-fields{display:none; gap:8px; align-items:center;}
+  .glass-fields.show{display:flex;}
+  .glass-fields input{flex:1;}
+  .glass-fields .glass-hint{font-size:11px; color:var(--ink-soft); font-weight:700; flex-shrink:0; white-space:nowrap;}
 
   .icon-pick-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(40px,1fr)); gap:7px; margin-bottom:12px;}
   .icon-pick{
@@ -335,20 +391,35 @@
     display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-radius:14px;
     background:var(--card-soft); margin-bottom:8px; font-size:12.5px; font-weight:700; color:var(--ink);
   }
-  .access-row .access-email{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .access-row{flex-wrap:wrap;}
+  .access-row .access-email{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;}
   .access-row .access-tag{font-size:10px; font-weight:800; color:var(--purple-deep); flex-shrink:0;}
   .access-row button{
     width:26px; height:26px; border-radius:9px; color:var(--danger); background:transparent; box-shadow:none;
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
   .access-row button svg{width:14px; height:14px;}
-  .access-add-row{display:flex; gap:8px; margin-top:6px;}
+  .role-select{
+    padding:6px 8px; border-radius:10px; border:1.5px solid var(--line); background:var(--card);
+    font-size:11px; font-weight:800; font-family:'Nunito'; color:var(--purple-deep); outline:none; flex-shrink:0;
+  }
+  .role-badge{
+    font-size:10px; font-weight:800; padding:4px 9px; border-radius:999px; flex-shrink:0;
+  }
+  .role-badge.role-parent{ background:var(--purple); color:#fff; }
+  .role-badge.role-child{ background:var(--blue-soft); color:var(--blue); }
+  .access-add-row{display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;}
   .access-add-row input{
-    flex:1; padding:11px 13px; border-radius:14px; border:1.5px solid var(--line); background:var(--card-soft);
+    flex:1; min-width:150px; padding:11px 13px; border-radius:14px; border:1.5px solid var(--line); background:var(--card-soft);
     font-size:13.5px; font-family:inherit; outline:none;
   }
   .access-add-row input:focus{border-color:var(--purple);}
+  .access-add-row select{
+    padding:0 10px; border-radius:14px; border:1.5px solid var(--line); background:var(--card-soft);
+    font-size:12.5px; font-family:inherit; outline:none; flex-shrink:0;
+  }
   .access-add-row button{padding:0 16px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; color:#fff; flex-shrink:0;}
+  .access-hint-noaccess{font-size:12px; color:var(--ink-soft); font-style:italic; line-height:1.5; margin-top:4px;}
   #accessError{color:var(--danger); font-size:12px; margin-top:8px; min-height:14px; font-weight:700;}
   .modal-close-btn{width:100%; margin-top:14px; padding:11px; border-radius:14px; font-family:'Baloo 2'; font-weight:700; color:var(--ink-soft);}
   #deniedScreen{max-width:400px; margin:8vh auto 0; padding:32px 26px; text-align:center; border-radius:32px; display:none;}
@@ -364,26 +435,12 @@
     .summary-card{min-width:100%;}
     .cal-grid{gap:4px;}
   }
-
-  /* ---------- CHILD SELECTOR ---------- */
-  .child-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:16px;border-radius:20px;}
-  .child-bar label{font-size:11px;font-weight:800;color:var(--ink-soft);white-space:nowrap;}
-  .child-select{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--card-soft);border-radius:14px;padding:10px 12px;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink);outline:none;}
-  .child-add-btn{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,var(--purple) 0%,var(--blue) 100%);}
-  .child-meta{font-size:10.5px;color:var(--ink-soft);font-weight:700;}
-  .child-modal-grid{display:grid;gap:10px;}
-  .child-modal-grid input{width:100%;padding:11px 13px;border-radius:14px;border:1.5px solid var(--line);background:var(--card-soft);font-size:13.5px;font-family:inherit;outline:none;}
-  .journal-date-row{display:flex;align-items:center;gap:8px;margin:0 0 12px;}
-  .journal-date-row label{font-size:11px;font-weight:800;color:var(--ink-soft);}
-  .journal-date-row input{flex:1;padding:9px 11px;border-radius:13px;border:1.5px solid var(--line);background:var(--card-soft);font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink);outline:none;}
-  .child-modal-grid input:focus{border-color:var(--purple);}
-
 </style>
 </head>
 <body>
 
 <div id="authScreen" class="clay-raised">
-  <img class="brand-logo" src="https://cdn.lynkid.my.id/draft-products/24-08-2026/1787576494698_9294242.png?format=webp" alt="Logo">
+  <img class="brand-logo" src="./icons/icon-192.png" alt="Logo">
   <h1>Habit Tracker Keluarga</h1>
   <p>Masuk pakai akun Google supaya progres anak bisa langsung dipantau dari HP orang tua juga.</p>
   <button class="google-btn clay-btn" id="googleSignInBtn" type="button">
@@ -391,7 +448,7 @@
     Masuk dengan Google
   </button>
   <div id="authError"></div>
-  <div class="fine-print">Hanya akun Google yang sudah diizinkan pemilik tracker yang bisa membuka & mengisi data ini. Akun orang tua (anisahknia@gmail.com) sudah otomatis punya akses.</div>
+  <div class="fine-print">Hanya akun Google yang sudah diizinkan pemilik tracker yang bisa membuka & mengisi data ini. Setiap akun punya role Orang Tua atau Anak, diatur lewat menu "Kelola Akses" setelah masuk.</div>
 </div>
 
 <div id="deniedScreen" class="clay-raised">
@@ -404,33 +461,36 @@
   <button class="primary-btn clay-btn clay-btn-teal" id="deniedLogoutBtn" type="button" style="width:100%;margin-top:16px;">Ganti Akun / Keluar</button>
 </div>
 
-<div class="modal-overlay" id="childModal">
-  <div class="modal-card clay-raised">
-    <h2>Tambah Anak</h2>
-    <p class="hint">Setiap anak punya kebiasaan, progress, target, mood, dan jurnal hariannya sendiri.</p>
-    <div class="child-modal-grid">
-      <input id="newChildName" type="text" maxlength="50" placeholder="Nama anak">
-      <input id="newChildClass" type="text" maxlength="40" placeholder="Kelas (opsional), mis. 5 SD">
-    </div>
-    <div id="childError" style="color:var(--danger);font-size:12px;margin-top:8px;min-height:14px;font-weight:700;"></div>
-    <div class="form-actions" style="margin-top:12px;">
-      <button class="btn-cancel clay-btn" id="cancelChildBtn" type="button">Batal</button>
-      <button class="btn-save clay-btn clay-btn-teal" id="saveChildBtn" type="button">Simpan Anak</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="accessModal">
   <div class="modal-card clay-raised">
     <h2>Kelola Akses</h2>
-    <p class="hint">Akun Google di bawah ini bisa membuka & mengisi tracker ini. Tambahkan email anak atau orang tua lain di sini.</p>
+    <p class="hint">Akun Google di bawah ini bisa membuka & mengisi tracker ini. Tambahkan email anak atau orang tua lain, lalu atur rolenya sebagai Orang Tua atau Anak.</p>
     <div id="accessList"></div>
-    <div class="access-add-row">
-      <input id="newAccessEmail" type="email" placeholder="Tambah email Google" maxlength="80">
-      <button class="clay-btn clay-btn-teal" id="addAccessBtn" type="button">Tambah</button>
+    <div id="accessAddWrap">
+      <div class="access-add-row">
+        <input id="newAccessEmail" type="email" placeholder="Tambah email Google" maxlength="80">
+        <select id="newAccessRole">
+          <option value="child" selected>Anak</option>
+          <option value="parent">Orang Tua</option>
+        </select>
+        <button class="clay-btn clay-btn-teal" id="addAccessBtn" type="button">Tambah</button>
+      </div>
     </div>
     <div id="accessError"></div>
     <button class="clay-btn modal-close-btn" id="closeAccessModal" type="button">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="iosInstallModal">
+  <div class="modal-card clay-raised">
+    <h2>Install ke Layar Utama</h2>
+    <p class="hint">Di iPhone/iPad, install lewat Safari dengan langkah berikut:</p>
+    <ol style="font-size:13px; color:var(--ink); line-height:1.9; padding-left:18px; margin:0 0 14px;">
+      <li>Ketuk ikon <b>Share</b> (kotak dengan panah ke atas) di bar bawah/atas Safari.</li>
+      <li>Gulir lalu pilih <b>"Add to Home Screen"</b> / "Tambah ke Layar Utama".</li>
+      <li>Ketuk <b>"Add"</b> di pojok kanan atas.</li>
+    </ol>
+    <button class="clay-btn modal-close-btn" id="closeIosInstallModal" type="button">Tutup</button>
   </div>
 </div>
 
@@ -438,7 +498,7 @@
   <div class="wrap">
     <header>
       <div class="title-block">
-        <img class="header-logo" src="https://cdn.lynkid.my.id/draft-products/24-08-2026/1787576494698_9294242.png?format=webp" alt="Logo">
+        <img class="header-logo" src="./icons/icon-192.png" alt="Logo">
         <div>
           <h1 style="margin:0 0 2px;">Habit Tracker Anak Sholeh & Rajin</h1>
           <p id="childLabel" style="margin:0;">—</p>
@@ -449,19 +509,18 @@
           <img id="userAvatar" src="" alt="" style="display:none;">
           <span id="userEmailLabel">—</span>
         </div>
-        <button class="clay-btn" id="manageAccessBtn" title="Kelola Akses">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </button>
-        <button class="clay-btn" id="logoutBtn" title="Keluar">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
-        </button>
+        <button class="clay-btn" id="installAppBtn" title="Install App" style="display:none;"></button>
+        <button class="clay-btn" id="manageAccessBtn" title="Kelola Akses"></button>
+        <button class="clay-btn" id="logoutBtn" title="Keluar"></button>
       </div>
     </header>
 
-    <div class="child-bar clay-raised">
-      <label for="childSelect">ANAK AKTIF</label>
-      <select id="childSelect" class="child-select"></select>
-      <button class="child-add-btn clay-btn" id="addChildBtn" type="button" title="Tambah anak">${''}</button>
+    <div id="profileSwitcherWrap" class="clay-raised" style="display:none; padding:12px 16px; margin-bottom:16px; align-items:center; gap:10px;">
+      <span style="font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink-soft); flex-shrink:0; display:flex; align-items:center; gap:6px;">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Lihat data:
+      </span>
+      <select id="profileSwitcher" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Nunito'; font-weight:800; font-size:13.5px; color:var(--purple-deep); outline:none;"></select>
     </div>
 
     <div class="goals-row">
@@ -521,11 +580,16 @@
           <input id="newHabitName" type="text" placeholder="Nama kebiasaan, mis. Baca Qur'an" maxlength="30">
           <div class="type-toggle">
             <button type="button" class="active" id="typeCheckBtn">Centang biasa</button>
-            <button type="button" id="typeCountBtn">Dengan target angka</button>
+            <button type="button" id="typeCountBtn">Target angka</button>
+            <button type="button" id="typeGlassBtn">Gelas air minum</button>
           </div>
           <div class="count-fields" id="countFields">
             <input id="newHabitTarget" type="number" min="0.5" step="0.5" placeholder="Target (mis. 2)">
             <input id="newHabitUnit" type="text" placeholder="Satuan (mis. liter, jam)" maxlength="12">
+          </div>
+          <div class="glass-fields" id="glassFields">
+            <input id="newHabitGlassTarget" type="number" min="1" max="10" step="1" placeholder="Target gelas (mis. 8)">
+            <span class="glass-hint">1 gelas = 200ml, maks 10</span>
           </div>
           <div class="icon-pick-grid" id="iconPickGrid"></div>
           <div class="form-actions">
@@ -544,11 +608,7 @@
       </div>
       <div class="journal-card clay-raised">
         <h2 id="journalDateLabel">Jurnal Harian</h2>
-        <div class="journal-date-row">
-          <label for="journalDatePicker">Tanggal</label>
-          <input id="journalDatePicker" type="date">
-        </div>
-        <p class="sub">Tulis apa saja yang terjadi atau dirasakan pada tanggal yang dipilih.</p>
+        <p class="sub">Tulis apa saja yang terjadi atau dirasakan hari ini.</p>
         <textarea id="journalText" maxlength="2000" placeholder="Hari ini aku..."></textarea>
         <div class="journal-save-row">
           <span class="journal-status" id="journalStatus"></span>
@@ -557,7 +617,7 @@
       </div>
     </div>
 
-    <footer class="note">Data tersimpan otomatis per anak & bisa dipantau dari HP mana pun yang punya akses. Ketuk lingkaran tanggal untuk pindah hari.</footer>
+    <footer class="note">Data tersimpan otomatis di akun keluarga & bisa dipantau dari HP mana pun yang login. Ketuk lingkaran tanggal untuk pindah hari.</footer>
   </div>
 </div>
 
@@ -569,7 +629,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove,
-  collection, query, where, getDocs, deleteDoc
+  collection, query, where, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -607,6 +667,7 @@ const ICONS = {
   book:      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
   users:     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   x:         '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  download:  '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/>',
 };
 function iconSvg(key, cls){ return `<svg class="icon ${cls||''}" viewBox="0 0 24 24">${ICONS[key]||ICONS.star}</svg>`; }
 
@@ -631,26 +692,28 @@ const DEFAULT_HABITS = [
   {id:'soal',    name:'Latihan Soal (min. 10)', icon:'brain', type:'check'},
   {id:'gym',     name:'Gym', icon:'dumbbell', type:'check'},
   {id:'phonebreak', name:'Break dari HP (selain tidur)', icon:'phoneOff', type:'count', target:2, unit:'jam', step:0.5},
-  {id:'water',   name:'Minum Air Putih', icon:'droplet', type:'count', target:2, unit:'L', step:0.5},
+  {id:'water',   name:'Minum Air Putih', icon:'droplet', type:'glass', target:8, max:10, mlPerGlass:200},
 ];
 
 const DOW = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 /* ---------------- STATE ---------------- */
+const DEFAULT_PARENT_EMAIL = 'anisahknia@gmail.com';
 let session = null;          // { uid, email, name, photo }
-let children = [];            // [{id,name,className}]
-let activeChild = null;       // current child object
 let habits = [];
-let monthData = {};           // { 'YYYY-MM-DD': { habitId: true|number } }
+let monthData = {};          // { 'YYYY-MM-DD': { habitId: true|number } }
 let viewDate = new Date();
 let selectedDate = new Date();
 let pickedIcon = 'star';
 let pickedType = 'check';
 let allowedEmails = [];
+let parentEmails = [];
 let journalMonthData = {};   // { 'YYYY-MM-DD': { mood, note } }
 let goals = { lifeGoal: '', monthlyTargets: {} };
 let activeTab = 'habits';
+let activeProfileEmail = null;   // whose habit/day/goal data is currently loaded
+let isAdmin = false;
 
 /* ---------------- STATIC ICON SETUP ---------------- */
 document.getElementById('monthlyTargetBadge').innerHTML = iconSvg('target');
@@ -659,116 +722,175 @@ document.getElementById('editMonthlyTargetBtn').innerHTML = iconSvg('pencil');
 document.getElementById('editLifeGoalBtn').innerHTML = iconSvg('pencil');
 document.getElementById('tabBtnHabits').innerHTML = iconSvg('check') + ' Kebiasaan';
 document.getElementById('tabBtnJournal').innerHTML = iconSvg('bookOpen') + ' Jurnal & Mood';
+document.getElementById('manageAccessBtn').innerHTML = iconSvg('users');
+document.getElementById('logoutBtn').innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>';
+document.getElementById('installAppBtn').innerHTML = iconSvg('download');
+
+/* ---------------- INSTALL APP (PWA) ---------------- */
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installAppBtn');
+function isStandaloneMode(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOSDevice(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+if(!isStandaloneMode() && isIOSDevice()){
+  installBtn.style.display = 'flex';
+}
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!isStandaloneMode()) installBtn.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  installBtn.style.display = 'none';
+});
+installBtn.addEventListener('click', async () => {
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{ await deferredInstallPrompt.userChoice; }catch(e){}
+    deferredInstallPrompt = null;
+    if(!isIOSDevice()) installBtn.style.display = 'none';
+  } else if(isIOSDevice()){
+    document.getElementById('iosInstallModal').classList.add('show');
+  }
+});
+document.getElementById('closeIosInstallModal').addEventListener('click', () => {
+  document.getElementById('iosInstallModal').classList.remove('show');
+});
 
 function pad(n){ return n<10 ? '0'+n : ''+n; }
 function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function monthKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}`; }
 function monthKeyFromDateKey(k){ return k.split('-').slice(0,2).join('-'); }
 function isHabitDone(h, val){
-  if(h.type === 'count') return (Number(val)||0) >= (h.target||0);
+  if(h.type === 'count' || h.type === 'glass') return (Number(val)||0) >= (h.target||0);
   return !!val;
 }
 
-/* ---------------- FIRESTORE HELPERS ---------------- */
-async function loadChildren(){
-  children = [];
-  if(!session?.uid) return;
+/* ---------------- PROFILES (per-anak / per-orang tua data) ---------------- */
+// Setiap akun Google yang punya akses (anak maupun orang tua) menyimpan data
+// kebiasaan/hari/goals-nya sendiri-sendiri di profiles/{email}/...
+function profileDoc(email, ...rest){ return doc(db, 'profiles', email, ...rest); }
+function profileCollection(email, ...rest){ return collection(db, 'profiles', email, ...rest); }
+
+async function upsertProfileInfo(){
+  if(!session) return;
   try{
-    const qs = await getDocs(collection(db,'families','main','children'));
-    qs.forEach(s => children.push({id:s.id, ...s.data()}));
-    children.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
-  }catch(e){ console.error('Gagal memuat daftar anak', e); }
+    await setDoc(doc(db,'profiles', session.email), {
+      email: session.email, name: session.name || session.email, photo: session.photo || '', updatedAt: Date.now()
+    }, {merge:true});
+  }catch(e){ console.error('Gagal menyimpan info profil', e); }
 }
 
-async function saveChild(child){
-  if(!session?.uid) throw new Error('No session');
-  await setDoc(doc(db,'families','main','children',child.id), {
-    name: child.name,
-    className: child.className || '',
-    createdAt: child.createdAt || Date.now()
-  }, {merge:true});
-}
+// Migrasi satu kali: data lama (sebelum ada pemisahan per-anak) dipindahkan
+// jadi milik akun orang tua (DEFAULT_PARENT_EMAIL) supaya tidak hilang.
+async function migrateLegacyDataIfNeeded(){
+  try{
+    const flagRef = doc(db,'profiles', DEFAULT_PARENT_EMAIL, '_meta','migrated');
+    const flagSnap = await getDoc(flagRef);
+    if(flagSnap.exists()) return;
 
-async function createChild(name, className=''){
-  const id = 'child_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-  const child = {id, name, className, createdAt: Date.now()};
-  await saveChild(child);
-  children.push(child);
-  children.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
-  activeChild = child;
-  await initializeChildDefaults();
-}
-
-async function initializeChildDefaults(){
-  if(!activeChild) return;
-  const habitsRef = collection(db,'families','main','children',activeChild.id,'habits');
-  const existing = await getDocs(habitsRef);
-  if(existing.empty){
-    for(const h of DEFAULT_HABITS){
-      await setDoc(doc(habitsRef,h.id), h);
+    const legacyHabits = await getDoc(doc(db,'habits','main'));
+    if(legacyHabits.exists()){
+      await setDoc(profileDoc(DEFAULT_PARENT_EMAIL,'habits','main'), legacyHabits.data());
     }
+    const legacyGoals = await getDoc(doc(db,'goals','main'));
+    if(legacyGoals.exists()){
+      await setDoc(profileDoc(DEFAULT_PARENT_EMAIL,'goals','main'), legacyGoals.data());
+    }
+    const legacyDaysSnap = await getDocs(collection(db,'days'));
+    for(const d of legacyDaysSnap.docs){
+      await setDoc(profileDoc(DEFAULT_PARENT_EMAIL,'days', d.id), d.data());
+    }
+    await setDoc(flagRef, {done:true, at: Date.now()});
+  }catch(e){ console.error('Migrasi data lama gagal (dilewati)', e); }
+}
+
+async function loadProfileOptions(){
+  const opts = [];
+  for(const e of allowedEmails){
+    let name = e;
+    try{
+      const snap = await getDoc(doc(db,'profiles', e));
+      if(snap.exists() && snap.data().name) name = snap.data().name;
+    }catch(err){ /* belum pernah login, pakai email */ }
+    opts.push({ email: e, name });
   }
-  habits = [];
-  const hs = await getDocs(habitsRef);
-  hs.forEach(s => habits.push({type:'check', ...s.data(), id:s.id}));
-  habits.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
+  return opts;
 }
 
+function renderProfileSwitcher(opts){
+  const wrap = document.getElementById('profileSwitcherWrap');
+  const select = document.getElementById('profileSwitcher');
+  if(!isAdmin || opts.length <= 1){
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+  select.innerHTML = opts.map(o => {
+    const tag = parentEmails.includes(o.email) ? ' (Orang Tua)' : ' (Anak)';
+    const label = `${o.name}${tag}`;
+    return `<option value="${o.email}" ${o.email===activeProfileEmail?'selected':''}>${label}</option>`;
+  }).join('');
+}
+document.getElementById('profileSwitcher').addEventListener('change', async (e) => {
+  await switchActiveProfile(e.target.value);
+});
+
+async function switchActiveProfile(email){
+  activeProfileEmail = email;
+  await loadHabits();
+  await loadMonthData(monthKey(viewDate));
+  await loadGoals();
+  renderCalendar(); renderDayPanel(); renderSummary(); renderGoals();
+  if(activeTab === 'journal') renderJournalTab();
+  updateChildLabel();
+}
+
+function updateChildLabel(){
+  const label = document.getElementById('childLabel');
+  if(activeProfileEmail === session.email){
+    label.textContent = isAdmin ? 'Menampilkan data kamu sendiri (Orang Tua)' : `Data ${session.name}`;
+  } else {
+    label.textContent = `Menampilkan data: ${activeProfileEmail}`;
+  }
+}
+
+/* ---------------- FIRESTORE HELPERS (di-scope ke activeProfileEmail) ---------------- */
 async function loadHabits(){
-  if(!activeChild) return;
-  habits = [];
   try{
-    const qs = await getDocs(collection(db,'families','main','children',activeChild.id,'habits'));
-    qs.forEach(s => habits.push({type:'check', ...s.data(), id:s.id}));
-    habits.sort((a,b)=>(a.name||'').localeCompare(b.name||'','id'));
-    if(!habits.length) await initializeChildDefaults();
-  }catch(e){ console.error('Gagal memuat kebiasaan anak', e); }
+    const snap = await getDoc(profileDoc(activeProfileEmail,'habits','main'));
+    if(snap.exists() && Array.isArray(snap.data().habits)){
+      habits = snap.data().habits.map(h => ({type:'check', ...h}));
+      return;
+    }
+  }catch(e){ console.error(e); }
+  habits = DEFAULT_HABITS.slice();
+  await saveHabits();
 }
-
 async function saveHabits(){
-  if(!activeChild) return;
-  try{
-    const col = collection(db,'families','main','children',activeChild.id,'habits');
-    const existing = await getDocs(col);
-    const currentIds = new Set(habits.map(h=>h.id));
-    const writes = habits.map(h => setDoc(doc(col,h.id), h));
-    const deletes = existing.docs
-      .filter(s => !currentIds.has(s.id))
-      .map(s => deleteDoc(doc(col,s.id)));
-    await Promise.all([...writes, ...deletes]);
-  }catch(e){ console.error('Gagal menyimpan daftar kebiasaan', e); }
+  try{ await setDoc(profileDoc(activeProfileEmail,'habits','main'), {habits}); }
+  catch(e){ console.error('Gagal menyimpan daftar kebiasaan', e); }
 }
-
 async function loadMonthData(mKey){
   monthData = {};
   journalMonthData = {};
-  if(!activeChild) return;
   try{
-    const q = query(
-      collection(db,'families','main','children',activeChild.id,'days'),
-      where('month','==',mKey)
-    );
+    const q = query(profileCollection(activeProfileEmail,'days'), where('month','==',mKey));
     const qs = await getDocs(q);
-    qs.forEach(s => {
-      const data = s.data() || {};
-      monthData[s.id] = data.entries || {};
-      journalMonthData[s.id] = {
-        mood: data.mood || null,
-        note: data.journal || ''
-      };
+    qs.forEach(d => {
+      const data = d.data() || {};
+      monthData[d.id] = data.entries || {};
+      journalMonthData[d.id] = data.journal || {};
     });
   }catch(e){ console.error('Gagal memuat data bulan', e); }
 }
-
 async function saveDay(dKey, obj){
-  if(!activeChild) return;
-  try{
-    await setDoc(
-      doc(db,'families','main','children',activeChild.id,'days',dKey),
-      {month: monthKeyFromDateKey(dKey), entries: obj},
-      {merge:true}
-    );
-  }catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
+  try{ await setDoc(profileDoc(activeProfileEmail,'days',dKey), {month: monthKeyFromDateKey(dKey), entries: obj}, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
 }
 
 /* ---------------- RENDER: SUMMARY ---------------- */
@@ -876,10 +998,29 @@ function renderDayPanel(){
     return;
   }
   list.innerHTML = habits.map(h => {
+    if(h.type === 'glass'){
+      const val = Math.min(Number(dayObj[h.id]) || 0, h.max || 10);
+      const done = isHabitDone(h, val);
+      const ml = val * (h.mlPerGlass || 200);
+      const targetMl = (h.target||0) * (h.mlPerGlass || 200);
+      const glasses = Array.from({length: h.max || 10}, (_,i) => i+1)
+        .map(n => `<button type="button" class="glass-btn ${n<=val?'filled':''}" data-glass="${n}" data-id="${h.id}">${iconSvg('droplet')}</button>`)
+        .join('');
+      return `<div class="habit-row ${done?'done':''}" style="flex-wrap:wrap;">
+        <div class="habit-icon">${iconSvg(h.icon)}</div>
+        <div class="habit-body">
+          <span class="habit-name">${h.name}</span>
+          <span class="habit-sub">${val}/${h.target} gelas · ${ml}/${targetMl} ml ${done?'✓':''}</span>
+        </div>
+        <button class="edit-btn" data-edit="${h.id}">${iconSvg('pencil')}</button>
+        <button class="del-btn" data-del="${h.id}">${iconSvg('trash')}</button>
+        <div class="glass-picker" style="width:100%; margin-top:4px;">${glasses}</div>
+      </div>`;
+    }
     if(h.type === 'count'){
       const val = Number(dayObj[h.id]) || 0;
       const done = isHabitDone(h, val);
-      return `<div class="habit-row">
+      return `<div class="habit-row ${done?'done':''}">
         <div class="habit-icon">${iconSvg(h.icon)}</div>
         <div class="habit-body">
           <span class="habit-name">${h.name}</span>
@@ -887,7 +1028,7 @@ function renderDayPanel(){
         </div>
         <div class="stepper">
           <button class="step-btn clay-btn" data-step="-1" data-id="${h.id}">${iconSvg('minus')}</button>
-          <span class="step-val">${val} ${h.unit}</span>
+          <span class="step-val ${done?'done':''}">${val} ${h.unit}</span>
           <button class="step-btn clay-btn" data-step="1" data-id="${h.id}">${iconSvg('plus')}</button>
         </div>
         <button class="edit-btn" data-edit="${h.id}">${iconSvg('pencil')}</button>
@@ -895,7 +1036,7 @@ function renderDayPanel(){
       </div>`;
     }
     const on = !!dayObj[h.id];
-    return `<div class="habit-row">
+    return `<div class="habit-row ${on?'done':''}">
       <div class="habit-icon">${iconSvg(h.icon)}</div>
       <div class="habit-body"><span class="habit-name">${h.name}</span></div>
       <button class="toggle-btn ${on?'on':'off clay-btn'}" data-id="${h.id}">${iconSvg('check')}</button>
@@ -909,6 +1050,18 @@ function renderDayPanel(){
       const id = btn.dataset.id;
       const obj = monthData[k] || (monthData[k] = {});
       obj[id] = !obj[id];
+      await saveDay(k, obj);
+      renderDayPanel(); renderCalendar(); renderSummary();
+    });
+  });
+  list.querySelectorAll('.glass-btn').forEach(btn=>{
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const n = Number(btn.dataset.glass);
+      const obj = monthData[k] || (monthData[k] = {});
+      const cur = Number(obj[id]) || 0;
+      // ketuk gelas terakhir yang sudah terisi untuk membatalkannya, selain itu set langsung ke gelas ke-n
+      obj[id] = (cur === n) ? n - 1 : n;
       await saveDay(k, obj);
       renderDayPanel(); renderCalendar(); renderSummary();
     });
@@ -958,10 +1111,13 @@ function setType(type){
   pickedType = type;
   document.getElementById('typeCheckBtn').classList.toggle('active', type==='check');
   document.getElementById('typeCountBtn').classList.toggle('active', type==='count');
+  document.getElementById('typeGlassBtn').classList.toggle('active', type==='glass');
   document.getElementById('countFields').classList.toggle('show', type==='count');
+  document.getElementById('glassFields').classList.toggle('show', type==='glass');
 }
 document.getElementById('typeCheckBtn').addEventListener('click', () => setType('check'));
 document.getElementById('typeCountBtn').addEventListener('click', () => setType('count'));
+document.getElementById('typeGlassBtn').addEventListener('click', () => setType('glass'));
 
 let editingHabitId = null;
 
@@ -971,6 +1127,7 @@ function resetAddForm(){
   document.getElementById('newHabitName').value = '';
   document.getElementById('newHabitTarget').value = '';
   document.getElementById('newHabitUnit').value = '';
+  document.getElementById('newHabitGlassTarget').value = '';
   setType('check');
   renderIconPicker();
   document.getElementById('saveAdd').textContent = 'Simpan';
@@ -980,9 +1137,10 @@ function openEditForm(h){
   editingHabitId = h.id;
   pickedIcon = h.icon;
   document.getElementById('newHabitName').value = h.name;
-  document.getElementById('newHabitTarget').value = h.target || '';
+  document.getElementById('newHabitTarget').value = h.type === 'count' ? (h.target || '') : '';
   document.getElementById('newHabitUnit').value = h.unit || '';
-  setType(h.type === 'count' ? 'count' : 'check');
+  document.getElementById('newHabitGlassTarget').value = h.type === 'glass' ? (h.target || '') : '';
+  setType(h.type === 'count' ? 'count' : (h.type === 'glass' ? 'glass' : 'check'));
   renderIconPicker();
   document.getElementById('saveAdd').textContent = 'Update';
   document.getElementById('addForm').classList.add('show');
@@ -1008,6 +1166,13 @@ document.getElementById('saveAdd').addEventListener('click', async () => {
     habitData.unit = unit;
     habitData.step = target <= 5 ? 0.5 : 1;
   }
+  if(pickedType === 'glass'){
+    let target = parseInt(document.getElementById('newHabitGlassTarget').value) || 8;
+    target = Math.max(1, Math.min(10, target));
+    habitData.target = target;
+    habitData.max = 10;
+    habitData.mlPerGlass = 200;
+  }
   if(editingHabitId){
     const idx = habits.findIndex(h=>h.id===editingHabitId);
     if(idx > -1) habits[idx] = {id: editingHabitId, ...habitData};
@@ -1018,74 +1183,6 @@ document.getElementById('saveAdd').addEventListener('click', async () => {
   document.getElementById('addForm').classList.remove('show');
   resetAddForm();
   renderDayPanel(); renderSummary();
-});
-
-/* ---------------- CHILDREN ---------------- */
-function renderChildSelector(){
-  const select = document.getElementById('childSelect');
-  const label = document.getElementById('childLabel');
-  select.innerHTML = children.map(c =>
-    `<option value="${c.id}">${c.name}${c.className ? ' · '+c.className : ''}</option>`
-  ).join('');
-  if(activeChild){
-    select.value = activeChild.id;
-    label.textContent = activeChild.className
-      ? `${activeChild.name} · ${activeChild.className}`
-      : activeChild.name;
-  }else{
-    label.textContent = 'Belum ada anak';
-  }
-}
-
-async function switchChild(childId){
-  const child = children.find(c => c.id === childId);
-  if(!child) return;
-  activeChild = child;
-  renderChildSelector();
-  await loadHabits();
-  await loadMonthData(monthKey(viewDate));
-  await loadGoals();
-  renderCalendar();
-  renderDayPanel();
-  renderSummary();
-  renderGoals();
-  if(activeTab === 'journal') renderJournalTab();
-}
-
-document.getElementById('childSelect').addEventListener('change', async e => {
-  await switchChild(e.target.value);
-});
-
-document.getElementById('addChildBtn').addEventListener('click', () => {
-  document.getElementById('newChildName').value = '';
-  document.getElementById('newChildClass').value = '';
-  document.getElementById('childError').textContent = '';
-  document.getElementById('childModal').classList.add('show');
-  document.getElementById('newChildName').focus();
-});
-
-document.getElementById('cancelChildBtn').addEventListener('click', () => {
-  document.getElementById('childModal').classList.remove('show');
-});
-
-document.getElementById('saveChildBtn').addEventListener('click', async () => {
-  const name = document.getElementById('newChildName').value.trim();
-  const className = document.getElementById('newChildClass').value.trim();
-  const err = document.getElementById('childError');
-  err.textContent = '';
-  if(!name){ err.textContent = 'Nama anak wajib diisi.'; return; }
-  try{
-    await createChild(name,className);
-    document.getElementById('childModal').classList.remove('show');
-    renderChildSelector();
-    await loadHabits();
-    await loadMonthData(monthKey(viewDate));
-    await loadGoals();
-    renderCalendar(); renderDayPanel(); renderSummary(); renderGoals();
-  }catch(e){
-    console.error(e);
-    err.textContent = 'Gagal membuat profil anak. Coba lagi.';
-  }
 });
 
 /* ---------------- TABS ---------------- */
@@ -1106,7 +1203,6 @@ function renderJournalTab(){
   const isToday = k === dateKey(new Date());
   const dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   const dLabel = `${dayNames[selectedDate.getDay()]}, ${selectedDate.getDate()} ${MONTHS[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-  document.getElementById('journalDatePicker').value = k;
   document.getElementById('moodDateLabel').textContent = isToday ? 'Mood Hari Ini' : `Mood — ${dLabel}`;
   document.getElementById('journalDateLabel').textContent = isToday ? 'Jurnal Harian' : `Jurnal — ${dLabel}`;
 
@@ -1130,27 +1226,6 @@ function renderJournalTab(){
   document.getElementById('journalText').value = entry.note || '';
   document.getElementById('journalStatus').textContent = '';
 }
-document.getElementById('journalDatePicker').addEventListener('change', () => {
-  const val = document.getElementById('journalDatePicker').value;
-  if(!val) return;
-  const [yy,mm,dd] = val.split('-').map(Number);
-  selectedDate = new Date(yy, mm-1, dd);
-  const selectedMonth = monthKey(selectedDate);
-  if(selectedMonth !== monthKey(viewDate)){
-    viewDate = new Date(yy, mm-1, 1);
-    loadMonthData(selectedMonth).then(() => {
-      renderCalendar();
-      renderDayPanel();
-      renderSummary();
-      renderGoals();
-      renderJournalTab();
-    });
-  }else{
-    renderCalendar();
-    renderDayPanel();
-    renderJournalTab();
-  }
-});
 document.getElementById('saveJournalBtn').addEventListener('click', async () => {
   const k = dateKey(selectedDate);
   const cur = journalMonthData[k] || (journalMonthData[k] = {});
@@ -1161,44 +1236,27 @@ document.getElementById('saveJournalBtn').addEventListener('click', async () => 
   setTimeout(() => { status.textContent = ''; }, 2500);
 });
 async function saveJournal(dKey, entry){
-  if(!activeChild) return;
-  try{
-    await setDoc(
-      doc(db,'families','main','children',activeChild.id,'days',dKey),
-      {
-        month: monthKeyFromDateKey(dKey),
-        mood: entry.mood || null,
-        journal: entry.note || ''
-      },
-      {merge:true}
-    );
-  }catch(e){ console.error('Gagal menyimpan jurnal', e); }
+  try{ await setDoc(profileDoc(activeProfileEmail,'days',dKey), {month: monthKeyFromDateKey(dKey), journal: entry}, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan jurnal', e); }
 }
 
 /* ---------------- GOALS (Target Bulan Ini & Life Goal) ---------------- */
 async function loadGoals(){
-  goals = {lifeGoal:'', monthlyTargets:{}};
-  if(!activeChild) return;
   try{
-    const snap = await getDoc(doc(db,'families','main','children',activeChild.id,'settings','goals'));
+    const snap = await getDoc(profileDoc(activeProfileEmail,'goals','main'));
     if(snap.exists()){
       const d = snap.data();
       goals.lifeGoal = d.lifeGoal || '';
       goals.monthlyTargets = d.monthlyTargets || {};
+      return;
     }
   }catch(e){ console.error(e); }
+  goals = {lifeGoal:'', monthlyTargets:{}};
 }
 async function saveGoals(){
-  if(!activeChild) return;
-  try{
-    await setDoc(
-      doc(db,'families','main','children',activeChild.id,'settings','goals'),
-      goals,
-      {merge:true}
-    );
-  }catch(e){ console.error('Gagal menyimpan goals', e); }
+  try{ await setDoc(profileDoc(activeProfileEmail,'goals','main'), goals, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan goals', e); }
 }
-
 function renderGoals(){
   const mKey = monthKey(viewDate);
   const target = goals.monthlyTargets[mKey] || '';
@@ -1264,9 +1322,8 @@ document.getElementById('nextMonth').addEventListener('click', async () => {
   renderCalendar(); renderSummary(); renderGoals();
 });
 
-/* ---------------- ACCESS LIST (Firestore: access/main) ---------------- */
-const DEFAULT_PARENT_EMAIL = 'anisahknia@gmail.com';
-
+/* ---------------- ACCESS LIST + ROLE (Firestore: access/main) ---------------- */
+// access/main = { emails: [...semua akun yang boleh masuk...], parents: [...subset yang berperan Orang Tua...] }
 function norm(email){ return (email||'').trim().toLowerCase(); }
 
 async function ensureAccessAndCheck(email){
@@ -1274,40 +1331,114 @@ async function ensureAccessAndCheck(email){
   const snap = await getDoc(ref);
   if(!snap.exists()){
     const seed = Array.from(new Set([DEFAULT_PARENT_EMAIL, norm(email)]));
-    await setDoc(ref, {emails: seed});
+    await setDoc(ref, {emails: seed, parents: [DEFAULT_PARENT_EMAIL]});
     allowedEmails = seed;
+    parentEmails = [DEFAULT_PARENT_EMAIL];
     return true;
   }
-  const list = Array.isArray(snap.data().emails) ? snap.data().emails.map(norm) : [];
+  const data = snap.data();
+  const list = Array.isArray(data.emails) ? data.emails.map(norm) : [];
   allowedEmails = list.includes(DEFAULT_PARENT_EMAIL) ? list : [...list, DEFAULT_PARENT_EMAIL];
+  let parents = Array.isArray(data.parents) ? data.parents.map(norm) : [];
+  if(!parents.includes(DEFAULT_PARENT_EMAIL)) parents = [...parents, DEFAULT_PARENT_EMAIL];
+  parentEmails = parents;
+  // migrasi satu kali: dokumen lama belum punya field "parents"
+  if(!Array.isArray(data.parents)){
+    try{ await updateDoc(ref, {parents: parentEmails}); }catch(e){ console.error('Gagal migrasi role', e); }
+  }
   return allowedEmails.includes(norm(email));
 }
-async function addAccessEmail(email){
+async function addAccessEmail(email, role){
   const e = norm(email);
   if(!e || !e.includes('@')) throw new Error('invalid');
-  await updateDoc(doc(db,'access','main'), {emails: arrayUnion(e)});
+  const ref = doc(db,'access','main');
+  await updateDoc(ref, {emails: arrayUnion(e)});
   if(!allowedEmails.includes(e)) allowedEmails.push(e);
+  if(role === 'parent'){
+    await updateDoc(ref, {parents: arrayUnion(e)});
+    if(!parentEmails.includes(e)) parentEmails.push(e);
+  }
 }
 async function removeAccessEmail(email){
   const e = norm(email);
-  await updateDoc(doc(db,'access','main'), {emails: arrayRemove(e)});
+  if(e === DEFAULT_PARENT_EMAIL) throw new Error('cannot-remove-owner');
+  await updateDoc(doc(db,'access','main'), {emails: arrayRemove(e), parents: arrayRemove(e)});
   allowedEmails = allowedEmails.filter(x => x !== e);
+  parentEmails = parentEmails.filter(x => x !== e);
+}
+async function setAccessRole(email, role){
+  const e = norm(email);
+  if(e === DEFAULT_PARENT_EMAIL) return; // pemilik utama selalu Orang Tua
+  const ref = doc(db,'access','main');
+  if(role === 'parent'){
+    await updateDoc(ref, {parents: arrayUnion(e)});
+    if(!parentEmails.includes(e)) parentEmails.push(e);
+  } else {
+    await updateDoc(ref, {parents: arrayRemove(e)});
+    parentEmails = parentEmails.filter(x => x !== e);
+  }
 }
 function renderAccessList(){
   const wrap = document.getElementById('accessList');
-  wrap.innerHTML = allowedEmails.map(e => `
+  const addWrap = document.getElementById('accessAddWrap');
+  addWrap.style.display = isAdmin ? 'block' : 'none';
+
+  wrap.innerHTML = allowedEmails.map(e => {
+    const isOwner = e === DEFAULT_PARENT_EMAIL;
+    const isMe = e === norm(session.email);
+    const isParentRole = parentEmails.includes(e);
+    const roleBadge = `<span class="role-badge ${isParentRole?'role-parent':'role-child'}">${isParentRole?'Orang Tua':'Anak'}</span>`;
+    // Admin (orang tua) bisa ganti role akun lain (bukan pemilik utama, bukan dirinya sendiri kalau dia satu-satunya orang tua)
+    const roleControl = (isAdmin && !isOwner)
+      ? `<select class="role-select" data-role-for="${e}">
+           <option value="child" ${!isParentRole?'selected':''}>Anak</option>
+           <option value="parent" ${isParentRole?'selected':''}>Orang Tua</option>
+         </select>`
+      : roleBadge;
+    const removeBtn = (isAdmin && !isOwner) ? `<button type="button" data-remove="${e}">${iconSvg('x')}</button>` : '';
+    return `
     <div class="access-row">
-      <span class="access-email">${e}</span>
-      <span style="display:flex; align-items:center; gap:6px;">
-        ${e === DEFAULT_PARENT_EMAIL ? '<span class="access-tag">Orang Tua</span>' : ''}
-        ${e === norm(session.email) ? '<span class="access-tag">Kamu</span>' : `<button type="button" data-remove="${e}">${iconSvg('x')}</button>`}
+      <span class="access-email">${e}${isMe?' (kamu)':''}</span>
+      <span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        ${isOwner ? '<span class="role-badge role-parent">Orang Tua · pemilik</span>' : roleControl}
+        ${removeBtn}
       </span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+
+  if(!isAdmin){
+    wrap.insertAdjacentHTML('beforeend', `<div class="access-hint-noaccess">Hanya akun berperan Orang Tua yang bisa menambah, menghapus, atau mengganti role akun.</div>`);
+  }
+
   wrap.querySelectorAll('[data-remove]').forEach(btn => {
     btn.addEventListener('click', async () => {
       if(!confirm(`Cabut akses untuk ${btn.dataset.remove}?`)) return;
-      try{ await removeAccessEmail(btn.dataset.remove); renderAccessList(); }
+      try{
+        await removeAccessEmail(btn.dataset.remove);
+        renderAccessList();
+        const opts = await loadProfileOptions();
+        renderProfileSwitcher(opts);
+        if(activeProfileEmail === btn.dataset.remove) await switchActiveProfile(session.email);
+      }
       catch(e){ console.error(e); }
+    });
+  });
+  wrap.querySelectorAll('[data-role-for]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      const email = sel.dataset.roleFor;
+      try{
+        await setAccessRole(email, sel.value);
+        renderAccessList();
+        const opts = await loadProfileOptions();
+        renderProfileSwitcher(opts);
+        if(email === session.email){
+          isAdmin = parentEmails.includes(session.email);
+          updateChildLabel();
+        }
+      }catch(e){
+        console.error(e);
+        sel.value = parentEmails.includes(norm(email)) ? 'parent' : 'child';
+      }
     });
   });
 }
@@ -1320,14 +1451,18 @@ document.getElementById('closeAccessModal').addEventListener('click', () => {
 });
 document.getElementById('addAccessBtn').addEventListener('click', async () => {
   const input = document.getElementById('newAccessEmail');
+  const roleSelect = document.getElementById('newAccessRole');
   const errEl = document.getElementById('accessError');
   errEl.textContent = '';
   const val = input.value.trim();
   if(!val || !val.includes('@')){ errEl.textContent = 'Masukkan alamat email Google yang valid.'; return; }
   try{
-    await addAccessEmail(val);
+    await addAccessEmail(val, roleSelect.value);
     input.value = '';
+    roleSelect.value = 'child';
     renderAccessList();
+    const opts = await loadProfileOptions();
+    renderProfileSwitcher(opts);
   }catch(e){
     console.error(e);
     errEl.textContent = 'Gagal menambahkan akses. Coba lagi.';
@@ -1361,7 +1496,6 @@ function showScreen(id){
 
 onAuthStateChanged(auth, async (user) => {
   document.getElementById('accessModal').classList.remove('show');
-  document.getElementById('childModal').classList.remove('show');
   if(!user){
     session = null;
     showScreen('authScreen');
@@ -1378,35 +1512,44 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  session = { uid: user.uid, email, name: user.displayName || email, photo: user.photoURL || '' };
+  session = { uid: user.uid, email: norm(email), name: user.displayName || email, photo: user.photoURL || '' };
+  isAdmin = parentEmails.includes(session.email);
+  activeProfileEmail = session.email;
   document.getElementById('userEmailLabel').textContent = session.name;
   const avatar = document.getElementById('userAvatar');
   if(session.photo){ avatar.src = session.photo; avatar.style.display = 'inline-block'; }
   else { avatar.style.display = 'none'; }
 
   try{
-    await loadChildren();
-    if(!children.length){
-      await createChild('Anak Pertama', '');
-    }else{
-      activeChild = children[0];
-    }
+    await upsertProfileInfo();
+    if(isAdmin) await migrateLegacyDataIfNeeded();
     await loadHabits();
     await loadMonthData(monthKey(viewDate));
     await loadGoals();
-    renderChildSelector();
     showScreen('appScreen');
     switchTab('habits');
     renderCalendar();
     renderDayPanel();
     renderSummary();
     renderGoals();
+    updateChildLabel();
+    if(isAdmin){
+      const opts = await loadProfileOptions();
+      renderProfileSwitcher(opts);
+    }
   }catch(e){
     console.error(e);
     document.getElementById('authError').textContent = 'Gagal memuat data. Coba lagi ya.';
     showScreen('authScreen');
   }
 });
+</script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(err => console.error('Gagal mendaftarkan service worker', err));
+    });
+  }
 </script>
 </body>
 </html>

@@ -1,0 +1,32 @@
+{
+  "name": "Habit Tracker Anak Sholeh & Rajin",
+  "short_name": "Habit Tracker",
+  "description": "Pantau kebiasaan harian, target bulanan, dan jurnal anak bersama keluarga.",
+  "start_url": "./habit_tracker.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3F4FB",
+  "theme_color": "#7B6EF6",
+  "orientation": "portrait",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
