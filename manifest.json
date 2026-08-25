@@ -1,6 +1,6 @@
 {
-  "name": "Habit Tracker Anak Sholeh & Rajin",
-  "short_name": "Habit Tracker",
+  "name": "Habit Tracker - LevelUp Your Life",
+  "short_name": "LevelUp",
   "description": "Pantau kebiasaan harian, target bulanan, dan jurnal anak bersama keluarga.",
   "start_url": "./index.html",
   "scope": "./",
