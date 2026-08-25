@@ -640,7 +640,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove,
+  getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField,
   collection, query, where, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -721,6 +721,7 @@ let pickedIcon = 'star';
 let pickedType = 'check';
 let allowedEmails = [];
 let parentEmails = [];
+let guardians = {};          // { childEmail: parentEmail } -> siapa penanggung jawab akun anak ini
 let journalMonthData = {};   // { 'YYYY-MM-DD': { mood, note } }
 let goals = { lifeGoal: '', monthlyTargets: {} };
 let activeTab = 'habits';
@@ -823,11 +824,10 @@ async function migrateLegacyDataIfNeeded(){
 
 async function loadProfileOptions(){
   const opts = [];
-  // Pemilik utama boleh lihat semua akun. Orang Tua lain hanya boleh lihat
-  // dirinya sendiri + akun Anak (tidak boleh lihat sesama akun Orang Tua).
-  const isOwnerSession = norm(session.email) === DEFAULT_PARENT_EMAIL;
+  // Setiap akun (termasuk owner) hanya melihat: dirinya sendiri, + anak yang
+  // guardians-nya adalah dirinya. Tidak ada bypass "lihat semua" untuk siapa pun.
   const visibleEmails = allowedEmails.filter(e =>
-    e === norm(session.email) || isOwnerSession || !parentEmails.includes(e)
+    e === norm(session.email) || (!parentEmails.includes(e) && guardians[e] === session.email)
   );
   for(const e of visibleEmails){
     let name = e;
@@ -1379,8 +1379,12 @@ document.getElementById('nextMonth').addEventListener('click', async () => {
   renderCalendar(); renderSummary(); renderGoals();
 });
 
-/* ---------------- ACCESS LIST + ROLE (Firestore: access/main) ---------------- */
-// access/main = { emails: [...semua akun yang boleh masuk...], parents: [...subset yang berperan Orang Tua...] }
+/* ---------------- ACCESS LIST + ROLE + GUARDIAN (Firestore: access/main) ---------------- */
+// access/main = {
+//   emails: [...semua akun yang boleh masuk...],
+//   parents: [...subset yang berperan Orang Tua...],
+//   guardians: { childEmail: parentEmail }  <- anak ini tanggung jawab Orang Tua siapa
+// }
 function norm(email){ return (email||'').trim().toLowerCase(); }
 
 async function ensureAccessAndCheck(email){
@@ -1388,9 +1392,10 @@ async function ensureAccessAndCheck(email){
   const snap = await getDoc(ref);
   if(!snap.exists()){
     const seed = Array.from(new Set([DEFAULT_PARENT_EMAIL, norm(email)]));
-    await setDoc(ref, {emails: seed, parents: [DEFAULT_PARENT_EMAIL]});
+    await setDoc(ref, {emails: seed, parents: [DEFAULT_PARENT_EMAIL], guardians: {}});
     allowedEmails = seed;
     parentEmails = [DEFAULT_PARENT_EMAIL];
+    guardians = {};
     return true;
   }
   const data = snap.data();
@@ -1399,12 +1404,17 @@ async function ensureAccessAndCheck(email){
   let parents = Array.isArray(data.parents) ? data.parents.map(norm) : [];
   if(!parents.includes(DEFAULT_PARENT_EMAIL)) parents = [...parents, DEFAULT_PARENT_EMAIL];
   parentEmails = parents;
+  guardians = (data.guardians && typeof data.guardians === 'object') ? data.guardians : {};
   // migrasi satu kali: dokumen lama belum punya field "parents"
   if(!Array.isArray(data.parents)){
     try{ await updateDoc(ref, {parents: parentEmails}); }catch(e){ console.error('Gagal migrasi role', e); }
   }
   return allowedEmails.includes(norm(email));
 }
+
+// Menambahkan akses baru. Kalau role = 'child', akun ini otomatis jadi tanggung
+// jawab (guardian) dari akun yang sedang menambahkannya. Kalau role = 'parent',
+// rules Firestore hanya mengizinkan ini berhasil untuk akun pemilik utama.
 async function addAccessEmail(email, role){
   const e = norm(email);
   if(!e || !e.includes('@')) throw new Error('invalid');
@@ -1414,45 +1424,77 @@ async function addAccessEmail(email, role){
   if(role === 'parent'){
     await updateDoc(ref, {parents: arrayUnion(e)});
     if(!parentEmails.includes(e)) parentEmails.push(e);
+  } else {
+    await updateDoc(ref, {[`guardians.${e}`]: session.email});
+    guardians[e] = session.email;
   }
 }
+
 async function removeAccessEmail(email){
   const e = norm(email);
   if(e === DEFAULT_PARENT_EMAIL) throw new Error('cannot-remove-owner');
-  await updateDoc(doc(db,'access','main'), {emails: arrayRemove(e), parents: arrayRemove(e)});
+  await updateDoc(doc(db,'access','main'), {
+    emails: arrayRemove(e), parents: arrayRemove(e), [`guardians.${e}`]: deleteField()
+  });
   allowedEmails = allowedEmails.filter(x => x !== e);
   parentEmails = parentEmails.filter(x => x !== e);
+  delete guardians[e];
 }
+
+// Ganti role. Naik jadi Orang Tua: hanya berhasil kalau yang menjalankan adalah
+// pemilik utama (dijaga oleh rules Firestore lewat field "parents"). Turun jadi
+// Anak: otomatis jadi tanggung jawab akun yang menurunkannya.
 async function setAccessRole(email, role){
   const e = norm(email);
-  if(e === DEFAULT_PARENT_EMAIL) return; // pemilik utama selalu Orang Tua
+  if(e === DEFAULT_PARENT_EMAIL) return;
   const ref = doc(db,'access','main');
   if(role === 'parent'){
-    await updateDoc(ref, {parents: arrayUnion(e)});
+    await updateDoc(ref, {parents: arrayUnion(e), [`guardians.${e}`]: deleteField()});
     if(!parentEmails.includes(e)) parentEmails.push(e);
+    delete guardians[e];
   } else {
-    await updateDoc(ref, {parents: arrayRemove(e)});
+    await updateDoc(ref, {parents: arrayRemove(e), [`guardians.${e}`]: session.email});
     parentEmails = parentEmails.filter(x => x !== e);
+    guardians[e] = session.email;
   }
 }
+
+// Baris mana yang boleh DILIHAT di modal Kelola Akses.
+function canSeeAccessRow(e){
+  if(e === session.email) return true;
+  if(e === DEFAULT_PARENT_EMAIL) return true; // pemilik selalu terlihat sbg referensi
+  return !parentEmails.includes(e) && guardians[e] === session.email;
+}
+// Baris mana yang boleh diubah ROLE-nya (naik/turun Orang Tua). Hanya pemilik utama.
+function canEditRoleOf(e){
+  return isAdmin && session.email === DEFAULT_PARENT_EMAIL && e !== DEFAULT_PARENT_EMAIL;
+}
+// Baris mana yang boleh DIHAPUS aksesnya.
+function canRemoveAccess(e){
+  if(e === DEFAULT_PARENT_EMAIL) return false;
+  if(session.email === DEFAULT_PARENT_EMAIL) return true;
+  return !parentEmails.includes(e) && guardians[e] === session.email;
+}
+
 function renderAccessList(){
   const wrap = document.getElementById('accessList');
   const addWrap = document.getElementById('accessAddWrap');
   addWrap.style.display = isAdmin ? 'block' : 'none';
 
-  wrap.innerHTML = allowedEmails.map(e => {
+  const visibleRows = allowedEmails.filter(canSeeAccessRow);
+
+  wrap.innerHTML = visibleRows.map(e => {
     const isOwner = e === DEFAULT_PARENT_EMAIL;
     const isMe = e === norm(session.email);
     const isParentRole = parentEmails.includes(e);
     const roleBadge = `<span class="role-badge ${isParentRole?'role-parent':'role-child'}">${isParentRole?'Orang Tua':'Anak'}</span>`;
-    // Admin (orang tua) bisa ganti role akun lain (bukan pemilik utama, bukan dirinya sendiri kalau dia satu-satunya orang tua)
-    const roleControl = (isAdmin && !isOwner)
+    const roleControl = canEditRoleOf(e)
       ? `<select class="role-select" data-role-for="${e}">
            <option value="child" ${!isParentRole?'selected':''}>Anak</option>
            <option value="parent" ${isParentRole?'selected':''}>Orang Tua</option>
          </select>`
       : roleBadge;
-    const removeBtn = (isAdmin && !isOwner) ? `<button type="button" data-remove="${e}">${iconSvg('x')}</button>` : '';
+    const removeBtn = canRemoveAccess(e) ? `<button type="button" data-remove="${e}">${iconSvg('x')}</button>` : '';
     return `
     <div class="access-row">
       <span class="access-email">${e}${isMe?' (kamu)':''}</span>
@@ -1464,7 +1506,9 @@ function renderAccessList(){
   }).join('');
 
   if(!isAdmin){
-    wrap.insertAdjacentHTML('beforeend', `<div class="access-hint-noaccess">Hanya akun berperan Orang Tua yang bisa menambah, menghapus, atau mengganti role akun.</div>`);
+    wrap.insertAdjacentHTML('beforeend', `<div class="access-hint-noaccess">Hanya akun berperan Orang Tua yang bisa menambah atau menghapus akun anak yang menjadi tanggung jawabnya.</div>`);
+  } else if(session.email !== DEFAULT_PARENT_EMAIL){
+    wrap.insertAdjacentHTML('beforeend', `<div class="access-hint-noaccess">Hanya ${DEFAULT_PARENT_EMAIL} yang bisa menaikkan akun menjadi Orang Tua. Kamu hanya bisa mengelola anak yang kamu tambahkan sendiri.</div>`);
   }
 
   wrap.querySelectorAll('[data-remove]').forEach(btn => {
@@ -1500,6 +1544,10 @@ function renderAccessList(){
   });
 }
 document.getElementById('manageAccessBtn').addEventListener('click', () => {
+  // sembunyikan opsi "Orang Tua" di form tambah untuk non-pemilik, karena rules
+  // Firestore memang hanya mengizinkan pemilik utama mengubah field "parents".
+  const roleOpt = document.querySelector('#newAccessRole option[value="parent"]');
+  if(roleOpt) roleOpt.disabled = (session.email !== DEFAULT_PARENT_EMAIL);
   renderAccessList();
   document.getElementById('accessModal').classList.add('show');
 });
@@ -1579,7 +1627,7 @@ onAuthStateChanged(auth, async (user) => {
 
   try{
     await upsertProfileInfo();
-    if(isAdmin) await migrateLegacyDataIfNeeded();
+    if(session.email === DEFAULT_PARENT_EMAIL) await migrateLegacyDataIfNeeded();
     await loadHabits();
     await migrateLegacyWaterDayValuesIfNeeded();
     await loadMonthData(monthKey(viewDate));
