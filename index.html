@@ -533,18 +533,6 @@
       </div>
 
       <div class="goals-row">
-        <div class="goal-card clay-raised gc-yellow">
-          <div class="goal-head">
-            <div class="goal-title"><span class="badge" id="monthlyTargetBadge"></span><span id="monthlyTargetLabel">Target Bulan Ini</span></div>
-            <button class="goal-edit" id="editMonthlyTargetBtn" type="button"></button>
-          </div>
-          <div class="goal-view" id="monthlyTargetView"><div class="goal-text empty" id="monthlyTargetText">Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.</div></div>
-          <textarea id="monthlyTargetInput" style="display:none;" maxlength="200" placeholder="Tulis target bulan ini, mis. Sholat tahajud 20 hari."></textarea>
-          <div class="goal-actions" id="monthlyTargetActions">
-            <button class="btn-cancel clay-btn" id="cancelMonthlyTarget" type="button">Batal</button>
-            <button class="btn-save clay-btn clay-btn-teal" id="saveMonthlyTarget" type="button">Simpan</button>
-          </div>
-        </div>
         <div class="goal-card clay-raised gc-pink">
           <div class="goal-head">
             <div class="goal-title"><span class="badge" id="lifeGoalBadge"></span><span>Life Goal</span></div>
@@ -557,30 +545,45 @@
             <button class="btn-save clay-btn clay-btn-teal" id="saveLifeGoal" type="button">Simpan</button>
           </div>
         </div>
+        <div class="goal-card clay-raised gc-yellow">
+          <div class="goal-head">
+            <div class="goal-title"><span class="badge" id="monthlyTargetBadge"></span><span id="monthlyTargetLabel">Target Bulan Ini</span></div>
+            <button class="goal-edit" id="editMonthlyTargetBtn" type="button"></button>
+          </div>
+          <div class="goal-view" id="monthlyTargetView"><div class="goal-text empty" id="monthlyTargetText">Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.</div></div>
+          <textarea id="monthlyTargetInput" style="display:none;" maxlength="200" placeholder="Tulis target bulan ini, mis. Sholat tahajud 20 hari."></textarea>
+          <div class="goal-actions" id="monthlyTargetActions">
+            <button class="btn-cancel clay-btn" id="cancelMonthlyTarget" type="button">Batal</button>
+            <button class="btn-save clay-btn clay-btn-teal" id="saveMonthlyTarget" type="button">Simpan</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="wrap">
+    <div class="summary" id="summaryRow"></div>
+    <div class="hero-card" id="heroCard"></div>
+
+    <!-- Kalender bulanan bersama: dipakai baik oleh tab Kebiasaan maupun tab
+         Jurnal & Mood, supaya jurnal juga punya tampilan per-hari/per-bulan
+         lewat kalender yang sama, bukan cuma tab Kebiasaan. -->
+    <div class="cal-card clay-raised">
+      <div class="cal-nav">
+        <button class="clay-btn" id="prevMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+        <div class="month-label" id="monthLabel">—</div>
+        <button class="clay-btn" id="nextMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+      </div>
+      <div class="cal-grid" id="calDow"></div>
+      <div class="cal-grid" id="calGrid" style="margin-top:5px;"></div>
+    </div>
+
     <div class="tab-bar">
       <button class="tab-btn active" id="tabBtnHabits" type="button"></button>
       <button class="tab-btn" id="tabBtnJournal" type="button"></button>
     </div>
 
     <div class="tab-panel active" id="tabHabits">
-      <div class="summary" id="summaryRow"></div>
-      <div class="hero-card" id="heroCard"></div>
-
-      <div class="cal-card clay-raised">
-        <div class="cal-nav">
-          <button class="clay-btn" id="prevMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
-          <div class="month-label" id="monthLabel">—</div>
-          <button class="clay-btn" id="nextMonth"><svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
-        </div>
-        <div class="cal-grid" id="calDow"></div>
-        <div class="cal-grid" id="calGrid" style="margin-top:5px;"></div>
-      </div>
-
       <div class="day-panel clay-raised">
         <h2 id="dayLabel">—</h2>
         <div id="habitList"></div>
@@ -1372,11 +1375,15 @@ document.getElementById('prevMonth').addEventListener('click', async () => {
   viewDate.setMonth(viewDate.getMonth()-1);
   await loadMonthData(monthKey(viewDate));
   renderCalendar(); renderSummary(); renderGoals();
+  if(activeTab === 'habits') renderDayPanel();
+  if(activeTab === 'journal') renderJournalTab();
 });
 document.getElementById('nextMonth').addEventListener('click', async () => {
   viewDate.setMonth(viewDate.getMonth()+1);
   await loadMonthData(monthKey(viewDate));
   renderCalendar(); renderSummary(); renderGoals();
+  if(activeTab === 'habits') renderDayPanel();
+  if(activeTab === 'journal') renderJournalTab();
 });
 
 /* ---------------- ACCESS LIST + ROLE + GUARDIAN (Firestore: access/main) ---------------- */
