@@ -68,18 +68,6 @@
     pointer-events:none;
     z-index:0;
   }
-  /* soft floating blob shapes, purely decorative, behind everything */
-  body::after{
-    content:'';
-    position:fixed;
-    top:-120px; right:-90px;
-    width:320px; height:320px;
-    border-radius:42% 58% 65% 35% / 45% 40% 60% 55%;
-    background:linear-gradient(135deg, rgba(123,110,246,0.20), rgba(76,141,246,0.10));
-    filter:blur(2px);
-    pointer-events:none;
-    z-index:0;
-  }
   .wrap, #authScreen, #deniedScreen, .modal-overlay{ position:relative; z-index:1; }
   .icon{width:1em; height:1em; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; vertical-align:-0.15em;}
   .wrap{max-width:760px; margin:0 auto;}
@@ -132,6 +120,23 @@
 
   /* ---------- APP SCREEN ---------- */
   #appScreen{display:none;}
+
+  /* dark hero panel: membungkus header s.d. card Target Bulan Ini / Life Goal */
+  .top-panel{
+    background:linear-gradient(160deg, #23253D 0%, #2C2F52 55%, #3A3277 100%);
+    border-radius:28px;
+    padding:20px 20px 22px;
+    margin-bottom:18px;
+    box-shadow:0 20px 40px rgba(20,20,40,0.35);
+  }
+  .top-panel .goals-row{ margin-bottom:0; }
+  .top-panel .title-block h1{ color:#fff; }
+  .top-panel .title-block p{ color:rgba(255,255,255,0.72); }
+  .top-panel .session-pill.clay-raised{ background:rgba(255,255,255,0.14); box-shadow:none; color:#fff; }
+  .top-panel .session-pill .clay-btn{ background:rgba(255,255,255,0.16); color:#fff; box-shadow:none; }
+  .top-panel .session-pill .clay-btn:hover{ background:rgba(255,255,255,0.26); }
+  .top-panel #profileSwitcherWrap.clay-raised{ box-shadow:none; }
+
   header{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     margin-bottom:20px; flex-wrap:wrap;
@@ -493,56 +498,58 @@
 
 <div id="appScreen">
   <div class="wrap">
-    <header>
-      <div class="title-block">
-        <img class="header-logo" src="./icon-512.png" alt="Logo">
-        <div>
-          <h1 style="margin:0 0 2px;">Habit Tracker - LevelUp Your Life</h1>
-          <p id="childLabel" style="margin:0;">—</p>
+    <div class="top-panel">
+      <header>
+        <div class="title-block">
+          <img class="header-logo" src="./icon-512.png" alt="Logo">
+          <div>
+            <h1 style="margin:0 0 2px;">Habit Tracker - LevelUp Your Life</h1>
+            <p id="childLabel" style="margin:0;">—</p>
+          </div>
         </div>
-      </div>
-      <div class="session-pill clay-raised">
-        <div class="user-chip">
-          <img id="userAvatar" src="" alt="" style="display:none;">
-          <span id="userEmailLabel">—</span>
+        <div class="session-pill clay-raised">
+          <div class="user-chip">
+            <img id="userAvatar" src="" alt="" style="display:none;">
+            <span id="userEmailLabel">—</span>
+          </div>
+          <button class="clay-btn" id="installAppBtn" title="Install App" style="display:none;"></button>
+          <button class="clay-btn" id="manageAccessBtn" title="Kelola Akses"></button>
+          <button class="clay-btn" id="logoutBtn" title="Keluar"></button>
         </div>
-        <button class="clay-btn" id="installAppBtn" title="Install App" style="display:none;"></button>
-        <button class="clay-btn" id="manageAccessBtn" title="Kelola Akses"></button>
-        <button class="clay-btn" id="logoutBtn" title="Keluar"></button>
-      </div>
-    </header>
+      </header>
 
-    <div id="profileSwitcherWrap" class="clay-raised" style="display:none; padding:12px 16px; margin-bottom:16px; align-items:center; gap:10px;">
-      <span style="font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink-soft); flex-shrink:0; display:flex; align-items:center; gap:6px;">
-        <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Lihat data:
-      </span>
-      <select id="profileSwitcher" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Nunito'; font-weight:800; font-size:13.5px; color:var(--purple-deep); outline:none;"></select>
-    </div>
-
-    <div class="goals-row">
-      <div class="goal-card clay-raised gc-yellow">
-        <div class="goal-head">
-          <div class="goal-title"><span class="badge" id="monthlyTargetBadge"></span><span id="monthlyTargetLabel">Target Bulan Ini</span></div>
-          <button class="goal-edit" id="editMonthlyTargetBtn" type="button"></button>
-        </div>
-        <div class="goal-view" id="monthlyTargetView"><div class="goal-text empty" id="monthlyTargetText">Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.</div></div>
-        <textarea id="monthlyTargetInput" style="display:none;" maxlength="200" placeholder="Tulis target bulan ini, mis. Sholat tahajud 20 hari."></textarea>
-        <div class="goal-actions" id="monthlyTargetActions">
-          <button class="btn-cancel clay-btn" id="cancelMonthlyTarget" type="button">Batal</button>
-          <button class="btn-save clay-btn clay-btn-teal" id="saveMonthlyTarget" type="button">Simpan</button>
-        </div>
+      <div id="profileSwitcherWrap" class="clay-raised" style="display:none; padding:12px 16px; margin-bottom:16px; align-items:center; gap:10px;">
+        <span style="font-family:'Baloo 2'; font-weight:700; font-size:12.5px; color:var(--ink-soft); flex-shrink:0; display:flex; align-items:center; gap:6px;">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Lihat data:
+        </span>
+        <select id="profileSwitcher" style="flex:1; min-width:0; border:none; background:transparent; font-family:'Nunito'; font-weight:800; font-size:13.5px; color:var(--purple-deep); outline:none;"></select>
       </div>
-      <div class="goal-card clay-raised gc-pink">
-        <div class="goal-head">
-          <div class="goal-title"><span class="badge" id="lifeGoalBadge"></span><span>Life Goal</span></div>
-          <button class="goal-edit" id="editLifeGoalBtn" type="button"></button>
+
+      <div class="goals-row">
+        <div class="goal-card clay-raised gc-yellow">
+          <div class="goal-head">
+            <div class="goal-title"><span class="badge" id="monthlyTargetBadge"></span><span id="monthlyTargetLabel">Target Bulan Ini</span></div>
+            <button class="goal-edit" id="editMonthlyTargetBtn" type="button"></button>
+          </div>
+          <div class="goal-view" id="monthlyTargetView"><div class="goal-text empty" id="monthlyTargetText">Belum diisi. Ketuk ikon pensil untuk menambahkan target bulan ini.</div></div>
+          <textarea id="monthlyTargetInput" style="display:none;" maxlength="200" placeholder="Tulis target bulan ini, mis. Sholat tahajud 20 hari."></textarea>
+          <div class="goal-actions" id="monthlyTargetActions">
+            <button class="btn-cancel clay-btn" id="cancelMonthlyTarget" type="button">Batal</button>
+            <button class="btn-save clay-btn clay-btn-teal" id="saveMonthlyTarget" type="button">Simpan</button>
+          </div>
         </div>
-        <div class="goal-view" id="lifeGoalView"><div class="goal-text empty" id="lifeGoalText">Belum diisi. Tulis cita-cita atau tujuan hidup jangka panjang.</div></div>
-        <textarea id="lifeGoalInput" style="display:none;" maxlength="300" placeholder="Tulis life goal, mis. Jadi hafidz Qur'an & juara olimpiade sains."></textarea>
-        <div class="goal-actions" id="lifeGoalActions">
-          <button class="btn-cancel clay-btn" id="cancelLifeGoal" type="button">Batal</button>
-          <button class="btn-save clay-btn clay-btn-teal" id="saveLifeGoal" type="button">Simpan</button>
+        <div class="goal-card clay-raised gc-pink">
+          <div class="goal-head">
+            <div class="goal-title"><span class="badge" id="lifeGoalBadge"></span><span>Life Goal</span></div>
+            <button class="goal-edit" id="editLifeGoalBtn" type="button"></button>
+          </div>
+          <div class="goal-view" id="lifeGoalView"><div class="goal-text empty" id="lifeGoalText">Belum diisi. Tulis cita-cita atau tujuan hidup jangka panjang.</div></div>
+          <textarea id="lifeGoalInput" style="display:none;" maxlength="300" placeholder="Tulis life goal, mis. Jadi hafidz Qur'an & juara olimpiade sains."></textarea>
+          <div class="goal-actions" id="lifeGoalActions">
+            <button class="btn-cancel clay-btn" id="cancelLifeGoal" type="button">Batal</button>
+            <button class="btn-save clay-btn clay-btn-teal" id="saveLifeGoal" type="button">Simpan</button>
+          </div>
         </div>
       </div>
     </div>
@@ -808,12 +815,18 @@ async function migrateLegacyDataIfNeeded(){
 
 async function loadProfileOptions(){
   const opts = [];
-  for(const e of allowedEmails){
+  // Pemilik utama boleh lihat semua akun. Orang Tua lain hanya boleh lihat
+  // dirinya sendiri + akun Anak (tidak boleh lihat sesama akun Orang Tua).
+  const isOwnerSession = norm(session.email) === DEFAULT_PARENT_EMAIL;
+  const visibleEmails = allowedEmails.filter(e =>
+    e === norm(session.email) || isOwnerSession || !parentEmails.includes(e)
+  );
+  for(const e of visibleEmails){
     let name = e;
     try{
       const snap = await getDoc(doc(db,'profiles', e));
       if(snap.exists() && snap.data().name) name = snap.data().name;
-    }catch(err){ /* belum pernah login, pakai email */ }
+    }catch(err){ /* belum pernah login, atau tidak punya akses baca -> pakai email */ }
     opts.push({ email: e, name });
   }
   return opts;
