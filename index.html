@@ -1412,6 +1412,24 @@ async function ensureAccessAndCheck(email){
   return allowedEmails.includes(norm(email));
 }
 
+// Migrasi satu kali: akun anak yang ditambahkan SEBELUM fitur guardian ada
+// belum punya entri di `guardians`, sehingga tak bisa diakses siapa pun
+// (termasuk pemilik utama) di bawah rules baru. Begitu pemilik utama login,
+// semua akun anak yang masih "yatim" (belum punya guardian) otomatis
+// diarahkan jadi tanggung jawab pemilik utama, supaya data lama tidak
+// tersembunyi/hilang dari tampilan.
+async function migrateOrphanGuardiansIfNeeded(){
+  if(session.email !== DEFAULT_PARENT_EMAIL) return;
+  const orphans = allowedEmails.filter(e => !parentEmails.includes(e) && !(e in guardians));
+  if(!orphans.length) return;
+  const patch = {};
+  orphans.forEach(e => { patch[`guardians.${e}`] = DEFAULT_PARENT_EMAIL; });
+  try{
+    await updateDoc(doc(db,'access','main'), patch);
+    orphans.forEach(e => { guardians[e] = DEFAULT_PARENT_EMAIL; });
+  }catch(e){ console.error('Gagal migrasi guardian akun lama', e); }
+}
+
 // Menambahkan akses baru. Kalau role = 'child', akun ini otomatis jadi tanggung
 // jawab (guardian) dari akun yang sedang menambahkannya. Kalau role = 'parent',
 // rules Firestore hanya mengizinkan ini berhasil untuk akun pemilik utama.
@@ -1627,7 +1645,10 @@ onAuthStateChanged(auth, async (user) => {
 
   try{
     await upsertProfileInfo();
-    if(session.email === DEFAULT_PARENT_EMAIL) await migrateLegacyDataIfNeeded();
+    if(session.email === DEFAULT_PARENT_EMAIL){
+      await migrateLegacyDataIfNeeded();
+      await migrateOrphanGuardiansIfNeeded();
+    }
     await loadHabits();
     await migrateLegacyWaterDayValuesIfNeeded();
     await loadMonthData(monthKey(viewDate));
