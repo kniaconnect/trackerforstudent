@@ -646,6 +646,19 @@ import {
   getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, deleteField,
   collection, query, where, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// PENTING: field "guardians" TIDAK BOLEH ditulis lewat path string bertitik
+// seperti `guardians.${email}`. Firestore membaca titik di dalam string
+// field-path sebagai pemisah nested map, jadi email seperti
+// "sarahannauren@gmail.com" akan pecah jadi guardians.sarahannauren@gmail.com
+// (key "sarahannauren@gmail" berisi nested field "com") alih-alih tersimpan
+// utuh sebagai satu key "sarahannauren@gmail.com". Ini bikin rules Firestore
+// gagal mengenali guardian meski terlihat benar di UI/local state. Solusinya:
+// selalu tulis seluruh map "guardians" sekaligus sebagai SATU field lewat
+// setDoc(..., {merge:true}), bukan lewat dot-path updateDoc.
+async function persistGuardians(){
+  try{ await setDoc(doc(db,'access','main'), {guardians}, {merge:true}); }
+  catch(e){ console.error('Gagal menyimpan data guardian', e); throw e; }
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyDvJYqwcQgZLpBW4crO5f7kO8Zttl2Hjxs",
@@ -1429,11 +1442,9 @@ async function migrateOrphanGuardiansIfNeeded(){
   if(session.email !== DEFAULT_PARENT_EMAIL) return;
   const orphans = allowedEmails.filter(e => !parentEmails.includes(e) && !(e in guardians));
   if(!orphans.length) return;
-  const patch = {};
-  orphans.forEach(e => { patch[`guardians.${e}`] = DEFAULT_PARENT_EMAIL; });
+  orphans.forEach(e => { guardians[e] = DEFAULT_PARENT_EMAIL; });
   try{
-    await updateDoc(doc(db,'access','main'), patch);
-    orphans.forEach(e => { guardians[e] = DEFAULT_PARENT_EMAIL; });
+    await persistGuardians();
   }catch(e){ console.error('Gagal migrasi guardian akun lama', e); }
 }
 
@@ -1450,20 +1461,21 @@ async function addAccessEmail(email, role){
     await updateDoc(ref, {parents: arrayUnion(e)});
     if(!parentEmails.includes(e)) parentEmails.push(e);
   } else {
-    await updateDoc(ref, {[`guardians.${e}`]: session.email});
     guardians[e] = session.email;
+    await persistGuardians();
   }
 }
 
 async function removeAccessEmail(email){
   const e = norm(email);
   if(e === DEFAULT_PARENT_EMAIL) throw new Error('cannot-remove-owner');
+  delete guardians[e];
   await updateDoc(doc(db,'access','main'), {
-    emails: arrayRemove(e), parents: arrayRemove(e), [`guardians.${e}`]: deleteField()
+    emails: arrayRemove(e), parents: arrayRemove(e)
   });
+  await persistGuardians();
   allowedEmails = allowedEmails.filter(x => x !== e);
   parentEmails = parentEmails.filter(x => x !== e);
-  delete guardians[e];
 }
 
 // Ganti role. Naik jadi Orang Tua: hanya berhasil kalau yang menjalankan adalah
@@ -1474,13 +1486,15 @@ async function setAccessRole(email, role){
   if(e === DEFAULT_PARENT_EMAIL) return;
   const ref = doc(db,'access','main');
   if(role === 'parent'){
-    await updateDoc(ref, {parents: arrayUnion(e), [`guardians.${e}`]: deleteField()});
-    if(!parentEmails.includes(e)) parentEmails.push(e);
     delete guardians[e];
+    await updateDoc(ref, {parents: arrayUnion(e)});
+    await persistGuardians();
+    if(!parentEmails.includes(e)) parentEmails.push(e);
   } else {
-    await updateDoc(ref, {parents: arrayRemove(e), [`guardians.${e}`]: session.email});
-    parentEmails = parentEmails.filter(x => x !== e);
     guardians[e] = session.email;
+    await updateDoc(ref, {parents: arrayRemove(e)});
+    await persistGuardians();
+    parentEmails = parentEmails.filter(x => x !== e);
   }
 }
 
