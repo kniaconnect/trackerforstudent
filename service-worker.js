@@ -1,13 +1,8 @@
-const CACHE_NAME = 'habit-tracker-cache-v2';
+const CACHE_NAME = 'habit-tracker-cache-v3';
 const CORE_ASSETS = [
-  './habit_tracker.html',
+  './index.html',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-512-maskable.png',
-  './icons/apple-touch-icon.png',
-  './icons/favicon-32.png',
-  './icons/favicon-16.png'
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

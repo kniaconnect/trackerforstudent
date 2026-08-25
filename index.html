@@ -10,9 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Habit Tracker">
-<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="./icon-512.png">
+<link rel="apple-touch-icon" href="./icon-512.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
 
@@ -440,7 +439,7 @@
 <body>
 
 <div id="authScreen" class="clay-raised">
-  <img class="brand-logo" src="./icons/icon-192.png" alt="Logo">
+  <img class="brand-logo" src="./icon-512.png" alt="Logo">
   <h1>Habit Tracker Keluarga</h1>
   <p>Masuk pakai akun Google supaya progres anak bisa langsung dipantau dari HP orang tua juga.</p>
   <button class="google-btn clay-btn" id="googleSignInBtn" type="button">
@@ -498,7 +497,7 @@
   <div class="wrap">
     <header>
       <div class="title-block">
-        <img class="header-logo" src="./icons/icon-192.png" alt="Logo">
+        <img class="header-logo" src="./icon-512.png" alt="Logo">
         <div>
           <h1 style="margin:0 0 2px;">Habit Tracker Anak Sholeh & Rajin</h1>
           <p id="childLabel" style="margin:0;">—</p>
@@ -865,11 +864,25 @@ async function loadHabits(){
     const snap = await getDoc(profileDoc(activeProfileEmail,'habits','main'));
     if(snap.exists() && Array.isArray(snap.data().habits)){
       habits = snap.data().habits.map(h => ({type:'check', ...h}));
+      if(migrateLegacyWaterHabit()) await saveHabits();
       return;
     }
   }catch(e){ console.error(e); }
   habits = DEFAULT_HABITS.slice();
   await saveHabits();
+}
+// Migrasi satu kali: kebiasaan "Minum Air Putih" versi lama (tipe count, satuan liter)
+// otomatis diubah jadi tipe "glass" (1 gelas = 200ml, maks 10) begitu akun lama login.
+function migrateLegacyWaterHabit(){
+  let changed = false;
+  habits = habits.map(h => {
+    if(h.id === 'water' && h.type !== 'glass'){
+      changed = true;
+      return {id:'water', name: h.name || 'Minum Air Putih', icon: h.icon || 'droplet', type:'glass', target:8, max:10, mlPerGlass:200};
+    }
+    return h;
+  });
+  return changed;
 }
 async function saveHabits(){
   try{ await setDoc(profileDoc(activeProfileEmail,'habits','main'), {habits}); }
@@ -891,6 +904,31 @@ async function loadMonthData(mKey){
 async function saveDay(dKey, obj){
   try{ await setDoc(profileDoc(activeProfileEmail,'days',dKey), {month: monthKeyFromDateKey(dKey), entries: obj}, {merge:true}); }
   catch(e){ console.error('Gagal menyimpan progress hari ini', e); }
+}
+
+// Migrasi satu kali per akun: nilai harian lama utk kebiasaan "water" yang masih
+// dalam satuan liter (peninggalan sebelum ada fitur gelas) dikonversi ke jumlah
+// gelas (1 gelas = 200ml), supaya riwayat lama tetap akurat, bukan cuma terpotong.
+async function migrateLegacyWaterDayValuesIfNeeded(){
+  if(!habits.some(h => h.id === 'water' && h.type === 'glass')) return;
+  const flagRef = profileDoc(activeProfileEmail, '_meta', 'waterUnitMigrated');
+  try{
+    const flagSnap = await getDoc(flagRef);
+    if(flagSnap.exists()) return;
+    const daysSnap = await getDocs(profileCollection(activeProfileEmail,'days'));
+    for(const d of daysSnap.docs){
+      const data = d.data() || {};
+      const entries = data.entries || {};
+      if('water' in entries){
+        const literVal = Number(entries.water) || 0;
+        if(literVal > 10){ continue; } // sudah dalam skala gelas (0-10), lewati
+        const glasses = Math.max(0, Math.min(10, Math.round(literVal * 1000 / 200)));
+        entries.water = glasses;
+        await setDoc(profileDoc(activeProfileEmail,'days', d.id), {entries}, {merge:true});
+      }
+    }
+    await setDoc(flagRef, {done:true, at: Date.now()});
+  }catch(e){ console.error('Migrasi satuan air minum gagal (dilewati)', e); }
 }
 
 /* ---------------- RENDER: SUMMARY ---------------- */
@@ -1524,6 +1562,7 @@ onAuthStateChanged(auth, async (user) => {
     await upsertProfileInfo();
     if(isAdmin) await migrateLegacyDataIfNeeded();
     await loadHabits();
+    await migrateLegacyWaterDayValuesIfNeeded();
     await loadMonthData(monthKey(viewDate));
     await loadGoals();
     showScreen('appScreen');
